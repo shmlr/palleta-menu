@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "data_status": "historical_seed_not_live",
   "source_notes": [
     "Fresh: Retail OS Fresh RAW 31d 24.09.2026; цены по данным прежнего пилота, историческая средняя, не кассовая цена сегодня.",

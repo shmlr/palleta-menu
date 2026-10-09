@@ -1,0 +1,545 @@
+{
+  "schema_version": 1,
+  "data_status": "historical_seed_not_live",
+  "source_notes": [
+    "Fresh: Retail OS Fresh RAW 31d 24.09.2026; цены по данным прежнего пилота, историческая средняя, не кассовая цена сегодня.",
+    "Часть фасованной продукции: согласованные рабочие цены от 05.10.2026. Они не доказывают наличие и текущую цену.",
+    "Всё наличие пока UNKNOWN. Нет интеграции с 1С или автоматического обновления."
+  ],
+  "price_freshness_hours": 24,
+  "stock_freshness_minutes": 60,
+  "products": [
+    {
+      "id": "chicken_fillet",
+      "ingredient": "chicken",
+      "name": "Филе куриное (Куриная лавка)",
+      "sku_code": null,
+      "unit": "кг",
+      "pack_size": 0.1,
+      "pricing_mode": "by_weight",
+      "price": null,
+      "price_as_of": null,
+      "price_source": null,
+      "availability": "unknown",
+      "availability_checked_at": null,
+      "stock_quantity": null,
+      "source": "catalog",
+      "compatible_with_recipe": true
+    },
+    {
+      "id": "beef_mince",
+      "ingredient": "mince",
+      "name": "Фарш говяжий",
+      "sku_code": null,
+      "unit": "кг",
+      "pack_size": 0.1,
+      "pricing_mode": "by_weight",
+      "price": null,
+      "price_as_of": null,
+      "price_source": null,
+      "availability": "unknown",
+      "availability_checked_at": null,
+      "stock_quantity": null,
+      "source": "catalog",
+      "compatible_with_recipe": true
+    },
+    {
+      "id": "pollock",
+      "ingredient": "fish",
+      "name": "Минтай б/г 25+",
+      "sku_code": null,
+      "unit": "кг",
+      "pack_size": 0.1,
+      "pricing_mode": "by_weight",
+      "price": null,
+      "price_as_of": null,
+      "price_source": null,
+      "availability": "unknown",
+      "availability_checked_at": null,
+      "stock_quantity": null,
+      "source": "catalog",
+      "compatible_with_recipe": true
+    },
+    {
+      "id": "mistral_rice_900",
+      "ingredient": "rice",
+      "name": "Рис Мистраль Янтарь пропаренный, 900 г",
+      "sku_code": "10213",
+      "unit": "кг",
+      "pack_size": 0.9,
+      "pricing_mode": "by_pack",
+      "price": null,
+      "price_as_of": null,
+      "price_source": null,
+      "availability": "unknown",
+      "availability_checked_at": null,
+      "stock_quantity": null,
+      "source": "catalog",
+      "compatible_with_recipe": true
+    },
+    {
+      "id": "makfa_flour_2000",
+      "ingredient": "flour",
+      "name": "Мука Makfa, 2 кг",
+      "sku_code": null,
+      "unit": "кг",
+      "pack_size": 2.0,
+      "pricing_mode": "by_pack",
+      "price": 109.9,
+      "price_as_of": "2026-10-05",
+      "price_source": "working_retail",
+      "availability": "unknown",
+      "availability_checked_at": null,
+      "stock_quantity": null,
+      "source": "catalog",
+      "compatible_with_recipe": true
+    },
+    {
+      "id": "uvelka_lentil_450",
+      "ingredient": "lentil",
+      "name": "Чечевица красная Увелка, 450 г",
+      "sku_code": null,
+      "unit": "кг",
+      "pack_size": 0.45,
+      "pricing_mode": "by_pack",
+      "price": null,
+      "price_as_of": null,
+      "price_source": null,
+      "availability": "unknown",
+      "availability_checked_at": null,
+      "stock_quantity": null,
+      "source": "catalog",
+      "compatible_with_recipe": true
+    },
+    {
+      "id": "makfa_noodles_500",
+      "ingredient": "noodles",
+      "name": "Макфа макароны длинные, 500 г",
+      "sku_code": null,
+      "unit": "кг",
+      "pack_size": 0.5,
+      "pricing_mode": "by_pack",
+      "price": null,
+      "price_as_of": null,
+      "price_source": null,
+      "availability": "unknown",
+      "availability_checked_at": null,
+      "stock_quantity": null,
+      "source": "catalog",
+      "compatible_with_recipe": true
+    },
+    {
+      "id": "eggs_co_10",
+      "ingredient": "eggs",
+      "name": "Яйца СО, 10 шт.",
+      "sku_code": null,
+      "unit": "шт",
+      "pack_size": 10,
+      "pricing_mode": "by_pack",
+      "price": null,
+      "price_as_of": null,
+      "price_source": null,
+      "availability": "unknown",
+      "availability_checked_at": null,
+      "stock_quantity": null,
+      "source": "catalog",
+      "compatible_with_recipe": true
+    },
+    {
+      "id": "darman_milk_1l",
+      "ingredient": "milk",
+      "name": "Молоко Дарман 3,2%, 1 л",
+      "sku_code": null,
+      "unit": "л",
+      "pack_size": 1,
+      "pricing_mode": "by_pack",
+      "price": null,
+      "price_as_of": null,
+      "price_source": null,
+      "availability": "unknown",
+      "availability_checked_at": null,
+      "stock_quantity": null,
+      "source": "catalog",
+      "compatible_with_recipe": true
+    },
+    {
+      "id": "vkus_milk_950",
+      "ingredient": "milk",
+      "name": "Молоко Вкуснотеево 3,2%, 950 г",
+      "sku_code": null,
+      "unit": "кг",
+      "pack_size": 0.95,
+      "pricing_mode": "by_pack",
+      "price": 109.9,
+      "price_as_of": "2026-10-05",
+      "price_source": "working_retail",
+      "availability": "unknown",
+      "availability_checked_at": null,
+      "stock_quantity": null,
+      "source": "catalog",
+      "compatible_with_recipe": false
+    },
+    {
+      "id": "darman_cottage_200",
+      "ingredient": "cottage",
+      "name": "Творог Дарман 9%, 200 г",
+      "sku_code": null,
+      "unit": "кг",
+      "pack_size": 0.2,
+      "pricing_mode": "by_pack",
+      "price": null,
+      "price_as_of": null,
+      "price_source": null,
+      "availability": "unknown",
+      "availability_checked_at": null,
+      "stock_quantity": null,
+      "source": "catalog",
+      "compatible_with_recipe": true
+    },
+    {
+      "id": "zlato_oil_1l",
+      "ingredient": "oil",
+      "name": "Масло подсолнечное Злато, 1 л",
+      "sku_code": null,
+      "unit": "л",
+      "pack_size": 1,
+      "pricing_mode": "by_pack",
+      "price": 139.9,
+      "price_as_of": "2026-10-05",
+      "price_source": "working_retail",
+      "availability": "unknown",
+      "availability_checked_at": null,
+      "stock_quantity": null,
+      "source": "catalog",
+      "compatible_with_recipe": true
+    },
+    {
+      "id": "tsar_oil_1l",
+      "ingredient": "oil",
+      "name": "Масло подсолнечное «Царь», 1 л",
+      "sku_code": null,
+      "unit": "л",
+      "pack_size": 1,
+      "pricing_mode": "by_pack",
+      "price": null,
+      "price_as_of": null,
+      "price_source": null,
+      "availability": "unknown",
+      "availability_checked_at": null,
+      "stock_quantity": null,
+      "source": "catalog",
+      "compatible_with_recipe": true
+    },
+    {
+      "id": "potato",
+      "ingredient": "potato",
+      "name": "Картофель",
+      "sku_code": "УТ-00003202",
+      "unit": "кг",
+      "pack_size": 0.1,
+      "pricing_mode": "by_weight",
+      "price": 50.2608204079,
+      "price_as_of": "2026-09-24",
+      "price_source": "historical_average",
+      "availability": "unknown",
+      "availability_checked_at": null,
+      "stock_quantity": null,
+      "source": "historical",
+      "compatible_with_recipe": true
+    },
+    {
+      "id": "onion",
+      "ingredient": "onion",
+      "name": "Лук репчатый",
+      "sku_code": "УТ-00001185",
+      "unit": "кг",
+      "pack_size": 0.1,
+      "pricing_mode": "by_weight",
+      "price": 44.7522045179,
+      "price_as_of": "2026-09-24",
+      "price_source": "historical_average",
+      "availability": "unknown",
+      "availability_checked_at": null,
+      "stock_quantity": null,
+      "source": "historical",
+      "compatible_with_recipe": true
+    },
+    {
+      "id": "carrot",
+      "ingredient": "carrot",
+      "name": "Морковь",
+      "sku_code": "УТ-00001447",
+      "unit": "кг",
+      "pack_size": 0.1,
+      "pricing_mode": "by_weight",
+      "price": 47.5377785935,
+      "price_as_of": "2026-09-24",
+      "price_source": "historical_average",
+      "availability": "unknown",
+      "availability_checked_at": null,
+      "stock_quantity": null,
+      "source": "historical",
+      "compatible_with_recipe": true
+    },
+    {
+      "id": "tomato",
+      "ingredient": "tomato",
+      "name": "Помидоры Новичок",
+      "sku_code": "УТ-00020184",
+      "unit": "кг",
+      "pack_size": 0.1,
+      "pricing_mode": "by_weight",
+      "price": 62.7878507722,
+      "price_as_of": "2026-09-24",
+      "price_source": "historical_average",
+      "availability": "unknown",
+      "availability_checked_at": null,
+      "stock_quantity": null,
+      "source": "historical",
+      "compatible_with_recipe": true
+    },
+    {
+      "id": "pepper",
+      "ingredient": "pepper",
+      "name": "Перец зелёный болгарский",
+      "sku_code": "УТ-00001729",
+      "unit": "кг",
+      "pack_size": 0.1,
+      "pricing_mode": "by_weight",
+      "price": 82.0774216982,
+      "price_as_of": "2026-09-24",
+      "price_source": "historical_average",
+      "availability": "unknown",
+      "availability_checked_at": null,
+      "stock_quantity": null,
+      "source": "historical",
+      "compatible_with_recipe": true
+    },
+    {
+      "id": "zucchini",
+      "ingredient": "zucchini",
+      "name": "Кабачки",
+      "sku_code": "УТ-00000753",
+      "unit": "кг",
+      "pack_size": 0.1,
+      "pricing_mode": "by_weight",
+      "price": 97.7264167292,
+      "price_as_of": "2026-09-24",
+      "price_source": "historical_average",
+      "availability": "unknown",
+      "availability_checked_at": null,
+      "stock_quantity": null,
+      "source": "historical",
+      "compatible_with_recipe": true
+    },
+    {
+      "id": "pumpkin",
+      "ingredient": "pumpkin",
+      "name": "Тыква",
+      "sku_code": "УТ-00007197",
+      "unit": "кг",
+      "pack_size": 0.1,
+      "pricing_mode": "by_weight",
+      "price": 45.208518313,
+      "price_as_of": "2026-09-24",
+      "price_source": "historical_average",
+      "availability": "unknown",
+      "availability_checked_at": null,
+      "stock_quantity": null,
+      "source": "historical",
+      "compatible_with_recipe": true
+    },
+    {
+      "id": "dill",
+      "ingredient": "greens",
+      "name": "Укроп",
+      "sku_code": "УТ-00002606",
+      "unit": "пучок",
+      "pack_size": 1,
+      "pricing_mode": "by_pack",
+      "price": 36.0163551402,
+      "price_as_of": "2026-09-24",
+      "price_source": "historical_average",
+      "availability": "unknown",
+      "availability_checked_at": null,
+      "stock_quantity": null,
+      "source": "historical",
+      "compatible_with_recipe": true
+    }
+  ],
+  "ingredients": [
+    {
+      "id": "chicken",
+      "name": "Куриное филе",
+      "unit": "кг",
+      "product_ids": [
+        "chicken_fillet"
+      ],
+      "substitution_hint": "Куриное бедро без кости: только после подтверждения SKU и корректировки рецепта"
+    },
+    {
+      "id": "mince",
+      "name": "Говяжий фарш",
+      "unit": "кг",
+      "product_ids": [
+        "beef_mince"
+      ],
+      "substitution_hint": "Другой говяжий фарш той же категории; без автоматической замены состава"
+    },
+    {
+      "id": "fish",
+      "name": "Белая рыба",
+      "unit": "кг",
+      "product_ids": [
+        "pollock"
+      ],
+      "substitution_hint": "Хек или другая белая рыба, если появится подтверждённый SKU"
+    },
+    {
+      "id": "rice",
+      "name": "Рис",
+      "unit": "кг",
+      "product_ids": [
+        "mistral_rice_900"
+      ],
+      "substitution_hint": "Другой пропаренный рис с проверенной фасовкой"
+    },
+    {
+      "id": "flour",
+      "name": "Мука",
+      "unit": "кг",
+      "product_ids": [
+        "makfa_flour_2000"
+      ],
+      "substitution_hint": "Другая пшеничная мука с подтверждённой фасовкой"
+    },
+    {
+      "id": "lentil",
+      "name": "Чечевица",
+      "unit": "кг",
+      "product_ids": [
+        "uvelka_lentil_450"
+      ],
+      "substitution_hint": "Другая красная чечевица; горох только с заменой рецепта"
+    },
+    {
+      "id": "noodles",
+      "name": "Лапша",
+      "unit": "кг",
+      "product_ids": [
+        "makfa_noodles_500"
+      ],
+      "substitution_hint": "Суповая лапша или вермишель подходящей фасовки"
+    },
+    {
+      "id": "eggs",
+      "name": "Яйца",
+      "unit": "шт",
+      "product_ids": [
+        "eggs_co_10"
+      ],
+      "substitution_hint": "Яйца С1 в упаковке 10 или 15 шт. после подтверждения SKU"
+    },
+    {
+      "id": "milk",
+      "name": "Молоко",
+      "unit": "л",
+      "product_ids": [
+        "darman_milk_1l",
+        "vkus_milk_950"
+      ],
+      "substitution_hint": "Вкуснотеево 950 г: формат подтверждён, но пересчёт граммов в литры для рецепта требует проверки"
+    },
+    {
+      "id": "cottage",
+      "name": "Творог",
+      "unit": "кг",
+      "product_ids": [
+        "darman_cottage_200"
+      ],
+      "substitution_hint": "Творог близкой жирности с проверенной фасовкой"
+    },
+    {
+      "id": "oil",
+      "name": "Подсолнечное масло",
+      "unit": "л",
+      "product_ids": [
+        "zlato_oil_1l",
+        "tsar_oil_1l"
+      ],
+      "substitution_hint": "Другие марки подсолнечного масла 1 л после сверки цены"
+    },
+    {
+      "id": "potato",
+      "name": "Картофель",
+      "unit": "кг",
+      "product_ids": [
+        "potato"
+      ],
+      "substitution_hint": "При отсутствии картофеля лучше предложить другое блюдо"
+    },
+    {
+      "id": "onion",
+      "name": "Лук",
+      "unit": "кг",
+      "product_ids": [
+        "onion"
+      ],
+      "substitution_hint": "Другой сорт репчатого лука после проверки товара"
+    },
+    {
+      "id": "carrot",
+      "name": "Морковь",
+      "unit": "кг",
+      "product_ids": [
+        "carrot"
+      ],
+      "substitution_hint": "При отсутствии моркови скорректировать рецепт вручную"
+    },
+    {
+      "id": "tomato",
+      "name": "Помидоры",
+      "unit": "кг",
+      "product_ids": [
+        "tomato"
+      ],
+      "substitution_hint": "Другой сорт свежих томатов после подтверждения SKU"
+    },
+    {
+      "id": "pepper",
+      "name": "Перец",
+      "unit": "кг",
+      "product_ids": [
+        "pepper"
+      ],
+      "substitution_hint": "Другой болгарский перец после подтверждения SKU"
+    },
+    {
+      "id": "zucchini",
+      "name": "Кабачки",
+      "unit": "кг",
+      "product_ids": [
+        "zucchini"
+      ],
+      "substitution_hint": "При отсутствии кабачков выбрать альтернативное блюдо"
+    },
+    {
+      "id": "pumpkin",
+      "name": "Тыква",
+      "unit": "кг",
+      "product_ids": [
+        "pumpkin"
+      ],
+      "substitution_hint": "При отсутствии тыквы выбрать альтернативное блюдо"
+    },
+    {
+      "id": "greens",
+      "name": "Зелень",
+      "unit": "пучок",
+      "product_ids": [
+        "dill"
+      ],
+      "substitution_hint": "Петрушка при подтверждённом наличии"
+    }
+  ]
+}

@@ -31,7 +31,7 @@ def number(raw,label):
     return v
 
 
-def convert(csv_path,json_path,dry_run=False):
+def convert(csv_path,json_path,dry_run=False,require_all_codes=False,max_age_minutes=None):
     catalog=json.loads(json_path.read_text('utf-8'))
     by_code={p['sku_code']:p for p in catalog['products'] if p.get('sku_code')}
     if len(by_code)!=len([p for p in catalog['products'] if p.get('sku_code')]):
@@ -55,11 +55,18 @@ def convert(csv_path,json_path,dry_run=False):
             expect_stock_unit='pack' if p['pricing_mode']=='by_pack' else expect_unit
             if row['stock_unit'].strip()!=expect_stock_unit:raise ValueError(f'Row {n}: stock_unit mismatch for {code}, expect {expect_stock_unit}')
             price=number(row['retail_price'],f'Row {n} retail_price')
+            if price<=0:raise ValueError(f'Row {n}: retail price must be positive, not zero')
             qty=number(row['stock_quantity'],f'Row {n} stock_quantity')
             if p['pricing_mode']=='by_pack' and not qty.is_integer():raise ValueError(f'Row {n}: stock_quantity for packs must be integer')
             stamp=parse_iso(row['captured_at'])
+            if max_age_minutes is not None:
+                age=(dt.datetime.now(dt.timezone.utc)-stamp.astimezone(dt.timezone.utc)).total_seconds()/60
+                if age>max_age_minutes:raise ValueError(f'Row {n}: captured_at too old ({age:.1f} minutes, limit {max_age_minutes})')
             rows.append((p,price,qty,stamp.isoformat(timespec='seconds')))
     if not rows:raise ValueError('No CSV sku_code matches current catalog. No updates applied.')
+    if require_all_codes and len(rows)!=len(by_code):
+        missing=sorted(set(by_code)-seen)
+        raise ValueError(f'Incomplete approved export: missing {len(missing)} mapped SKU codes: {missing[:15]}')
     for p,price,qty,stamp in rows:
         p.update(price=price,price_as_of=stamp,price_source='current_retail',
                  stock_quantity=qty,availability='in_stock' if qty>0 else 'out_of_stock',
@@ -76,9 +83,11 @@ def main():
     p.add_argument('--catalog',default=ROOT/'products.json',type=Path)
     p.add_argument('--dry-run',action='store_true')
     p.add_argument('--push',action='store_true',help='Only with explicit approval, commits products.json to this repository and pushes main')
+    p.add_argument('--require-all-codes',action='store_true',help='Fail closed unless every mapped product is present in the export')
+    p.add_argument('--max-age-minutes',type=int,default=None,help='Fail if any row was captured more than N minutes ago')
     args=p.parse_args()
     if args.push and args.dry_run:raise SystemExit('--push cannot be combined with --dry-run')
-    n,total=convert(args.csv,args.catalog,args.dry_run)
+    n,total=convert(args.csv,args.catalog,args.dry_run,require_all_codes=args.require_all_codes,max_age_minutes=args.max_age_minutes)
     print(f'Matched and validated {n} of {total} catalog SKU codes. '+('DRY RUN' if args.dry_run else 'products.json updated locally'))
     if args.push:
         subprocess.run(['git','add','products.json'],cwd=ROOT,check=True)

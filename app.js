@@ -1,136 +1,117 @@
 'use strict';
 (() => {
 const $=document.getElementById('app');
-let catalog,recipes,products,ingredients,state={step:0,a:{excl:[]},seed:1,chosen:{}};
-const DAYS=['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
-const QUESTIONS=[
-{id:'people',q:'Сколько человек будет ужинать?',options:[['1',1],['2',2],['3',3],['4',4],['5',5],['6',6]],cols:true},
-{id:'time',q:'Сколько времени готовы потратить на ужин?',options:[['До 30 минут',30],['До 45 минут',45],['До 60 минут',60],['Без ограничения',999]]},
-{id:'budget',q:'Какой ориентир бюджета на 7 ужинов?',options:[['До 3 000 ₽',3000],['До 5 000 ₽',5000],['До 8 000 ₽',8000],['Без ограничения',0]]},
-{id:'excl',q:'Какие блюда исключить?',options:[['Рыбу','fish'],['Молочные','dairy'],['С глютеном','gluten']],multi:true}
-];
-const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const money=n=>Number(n).toLocaleString('ru-RU',{maximumFractionDigits:2,minimumFractionDigits:2})+' ₽';
+const C=window.PalletaCore;
+if(!C){$.textContent='Ошибка загрузки расчётного модуля. Обновите страницу.';return;}
+const esc=x=>String(x??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+const money=n=>Number(n).toLocaleString('ru-RU',{minimumFractionDigits:2,maximumFractionDigits:2})+' ₽';
 const qfmt=n=>Number(Number(n).toFixed(3)).toLocaleString('ru-RU');
-const rdate=x=>x?new Date(x).toLocaleString('ru-RU'):'неизвестно';
-function recent(s,maxMinutes){let time=Date.parse(s||'');return Number.isFinite(time)&&Date.now()>=time&&Date.now()-time<=maxMinutes*60000}
-function stockStatus(p){
- if(!recent(p.availability_checked_at,catalog.stock_freshness_minutes))return 'unknown';
- if(p.availability==='in_stock'&&Number.isFinite(p.stock_quantity)&&p.stock_quantity>0)return 'in_stock';
- if(p.availability==='out_of_stock'||(p.availability==='in_stock'&&p.stock_quantity===0))return 'out_of_stock';
- return 'unknown';
-}
-function currentPrice(p){return p.price_source==='current_retail' && recent(p.price_as_of,catalog.price_freshness_hours*60)}
-function usable(p,ing){return p&&p.compatible_with_recipe!==false&&p.unit===ing.unit&&Number.isFinite(p.pack_size)&&p.pack_size>0}
-function choose(ingId){
- const ing=ingredients[ingId],options=ing.product_ids.map(id=>products[id]).filter(p=>usable(p,ing));
- const available=options.filter(p=>stockStatus(p)==='in_stock');
- const possible=options.filter(p=>stockStatus(p)!=='out_of_stock');
- const chosen=state.chosen[ingId];
- if(chosen&&possible.some(p=>p.id===chosen))return products[chosen];
- // Never prefer an unknown-stock item over one confirmed in stock.
- return available[0]||possible[0]||null;
-}
-function recipeAvailable(r){return Object.keys(r.ingredients_per_person).every(k=>choose(k)!==null)}
-function rng(a){return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
-function plan(){
- const a=state.a,f=rng(state.seed);
- const pool=recipes.filter(r=>r.minutes<=a.time&&!r.tags.some(tag=>a.excl.includes(tag))&&recipeAvailable(r));
- const shuffled=pool.map(r=>[f(),r]).sort((a,b)=>a[0]-b[0]).map(pair=>pair[1]);
- return {pool:shuffled,menu:shuffled.length?Array.from({length:7},(_,i)=>shuffled[i%shuffled.length]):[]};
-}
-function basket(menu){
- const need={};menu.forEach(r=>Object.entries(r.ingredients_per_person).forEach(([id,qty])=>need[id]=(need[id]||0)+qty*state.a.people));
- const items=Object.entries(need).map(([id,required])=>{
-  const ing=ingredients[id],p=choose(id);if(!p)return {id,ing,p:null};
-  const packs=Math.ceil(required/p.pack_size-1e-9);
-  const qty=Number((packs*p.pack_size).toFixed(4));
-  const priceKnown=Number.isFinite(p.price)&&p.price>=0;
-  const cost=priceKnown?packs*(p.pricing_mode==='by_pack'?p.price:p.price*p.pack_size):null;
-  return {id,ing,p,packs,qty,priceKnown,cost,isCurrent:currentPrice(p),stock:stockStatus(p)};
- });
- items.sort((a,b)=>a.ing.name.localeCompare(b.ing.name,'ru'));
- return {items,priced:items.filter(i=>i.priceKnown).length,totalKnown:items.reduce((sum,i)=>sum+(i.cost||0),0),allCurrent:items.every(i=>i.priceKnown&&i.isCurrent),allInStock:items.every(i=>i.stock==='in_stock')};
-}
-function replacementCount(r){return Object.keys(r.ingredients_per_person).filter(id=>!choose(id)).length}
+const STATUS={in_stock:'подтверждено по выгрузке',unknown:'остаток уточняется',out_of_stock:'нет по выгрузке'};
+let catalog,recipes,step=0,seed=1,fixed={},chosen={},prefs={people:4,time:60,budget:0,excl:[]},lastPlan;
+const Q=[
+ {key:'people',name:'На сколько человек готовим?',choices:[['1',1],['2',2],['3',3],['4',4],['5',5],['6',6]],cols:true},
+ {key:'time',name:'Максимальное время на одно блюдо?',choices:[['До 30 минут',30],['До 45 минут',45],['До 60 минут',60],['Без ограничения',999]]},
+ {key:'budget',name:'Ориентир бюджета на 21 блюдо?',choices:[['До 5 000 ₽',5000],['До 8 000 ₽',8000],['До 12 000 ₽',12000],['Без ограничения',0]]},
+ {key:'excl',name:'Что исключить из меню?',choices:[['Рыбу','fish'],['Молочные продукты','dairy'],['Глютенсодержащие ингредиенты','gluten'],['Яйца','eggs']],multi:true}
+];
+function explainSource(){const latest=[...catalog.products].filter(x=>x.availability_checked_at).map(x=>Date.parse(x.availability_checked_at)).filter(Number.isFinite);const when=latest.length?new Date(Math.max(...latest)).toLocaleString('ru-RU'):'нет подтверждённых выгрузок';return when;}
 function renderQuestion(){
- const q=QUESTIONS[state.step];let h=`<div class="bar"><span style="width:${state.step/QUESTIONS.length*100}%"></span></div><h1>${esc(q.q)}</h1>`;
- if(q.id==='budget')h+='<p class="muted">Пока бюджет ориентировочный: нельзя проверить его по неполному или устаревшему прайсу.</p>';
+ const q=Q[step];let h=`<div class="bar"><span style="width:${step/Q.length*100}%"></span></div><h1>${esc(q.name)}</h1>`;
+ if(q.key==='budget')h+='<p class="muted">Бюджет можно проверить только при полных актуальных розничных ценах и остатках. При неполных данных это пожелание, не гарантированный предел.</p>';
  h+=`<div class="choices${q.cols?' cols':''}">`;
- for(const [label,v] of q.options){
- const selected=q.multi?state.a.excl.includes(v):state.a[q.id]===v;
- h+=`<button class="choice${selected?' selected':''}" data-answer="${esc(v)}">${esc(label)}</button>`;
+ for(const [label,val] of q.choices){const marked=q.multi?prefs.excl.includes(val):prefs[q.key]===val;h+=`<button class="choice${marked?' selected':''}" data-answer="${esc(val)}" aria-pressed="${marked?'true':'false'}">${esc(label)}</button>`;}
+ h+='</div>';
+ if(q.multi)h+='<button class="btn" id="next">Собрать 21 блюдо</button>';
+ if(step)h+='<button class="btn secondary" id="back">Назад</button>';
+ $.innerHTML=h;
+ $.querySelectorAll('[data-answer]').forEach(b=>b.onclick=()=>{const value=b.dataset.answer;
+  if(q.multi){if(prefs.excl.includes(value))prefs.excl=prefs.excl.filter(x=>x!==value);else prefs.excl.push(value);} else {prefs[q.key]=Number(value);step++;}
+  fixed={};render();
+ });
+ if(q.multi)document.getElementById('next').onclick=()=>{step=Q.length;render()};
+ if(step)document.getElementById('back').onclick=()=>{step--;render()};
+}
+function renderRecipeDetails(r){return `<details><summary class="small">Как готовить и состав на порцию</summary><p class="small">${Object.entries(r.ingredients_per_person).map(([id,v])=>`${esc(catalog.byIngredient[id].name)} ${qfmt(v)} ${esc(catalog.byIngredient[id].unit)}`).join(' · ')}</p><ol>${r.steps.map(t=>`<li class="small">${esc(t)}</li>`).join('')}</ol><p class="small">${esc(r.pantry_note)}</p></details>`;}
+function alternativesFor(slot){
+ const recipesForMeal=recipes.filter(r=>r.meal===slot.meal&&r.minutes<=prefs.time&&!r.tags.some(t=>prefs.excl.includes(t)));
+ // Availability across the entire selected week's cart is checked by the planner when a user chooses an alternative.
+ return recipesForMeal.filter(r=>r.id!==slot.recipe?.id).sort((a,b)=>a.name.localeCompare(b.name,'ru'));
+}
+function basketText(result){
+ let t=`Паллета. Заявка на проверку корзины\n7 дней, завтрак / обед / ужин, на ${prefs.people} чел.\n`;
+ for(const slot of result.slots)t+=`${C.DAYS[slot.day]} ${C.MEAL_NAMES[slot.meal]}: ${slot.recipe?slot.recipe.name:'НЕ ПОДОБРАНО'}\n`;
+ t+='\nПредварительная продуктовая корзина:\n';
+ for(const it of result.basket.items)t+=`• ${it.p.name} — ${qfmt(it.quantity)} ${it.p.unit} (${it.packs} ед. по ${qfmt(it.p.pack_size)} ${it.p.unit})${it.p.sku_code?' [код '+it.p.sku_code+']':''}; наличие ${STATUS[it.stock]}; цена ${it.priceCurrent?'по текущему файлу':'не подтверждена сегодня'}\n`;
+ if(result.basket.shortages.length)t+='\nНЕ ХВАТАЕТ: '+result.basket.shortages.map(x=>x.name||x.id).join(', ')+'\n';
+ t+='\nПожалуйста, проверьте цены, фактические остатки, возможные замены и условия доставки. Сумма не является подтверждённым заказом.';
+ return t;
+}
+function renderResult(message=''){
+ lastPlan=C.plan(catalog,recipes,prefs,{seed,fixed,selected:chosen});
+ const p=lastPlan,b=p.basket;
+ let h='<div class="bar"><span style="width:100%"></span></div><h1>Семейное меню на 7 дней</h1>';
+ h+=`<p class="muted">${prefs.people} чел. · завтрак, обед и ужин · ${p.filled} из ${p.totalSlots} блюд подобрано · ${recipes.length} редакционных рецептов</p>`;
+ if(message)h+=`<div class="note">${esc(message)}</div>`;
+ const inStock=catalog.products.filter(x=>C.availability(x,catalog)==='in_stock').length;
+ h+=`<div class="note"><b>${inStock?'Часть остатков подтверждена':'Данных 1С о текущих остатках пока нет'}.</b> Каталог автоматически подхватывается из products.json при открытии сайта. Последняя сверка: ${esc(explainSource())}. ${inStock?'Товары с устаревшими отметками показываются как неизвестные.':'Пока выбор предварительный, а не обещание наличия или цены.'}</div>`;
+ let day=-1;
+ for(const slot of p.slots){
+   if(slot.day!==day){day=slot.day;h+=`<div class="panel"><h2 class="dayheading">${C.DAYS[day]} · день ${day+1}</h2>`;}
+   h+=`<div class="slot"><div class="slot-head"><strong>${C.MEAL_NAMES[slot.meal]}</strong><span>${slot.recipe?esc(slot.recipe.name):'<span class="error">Блюдо не подобрано</span>'}</span></div>`;
+   if(slot.recipe){h+=`<div class="small">${slot.recipe.minutes} мин · редакционный рецепт</div>`;h+=renderRecipeDetails(slot.recipe);}else h+=`<p class="small warning">${esc(slot.reason)}. Обновите остатки или снимите ограничения.</p>`;
+   const options=alternativesFor(slot);
+   if(options.length){h+=`<div class="grid-actions"><select class="slotselect" aria-label="Заменить ${C.MEAL_NAMES[slot.meal].toLowerCase()} дня ${slot.day+1}" data-slot="${esc(slot.key)}"><option value="">Заменить блюдо…</option>`;
+     for(const x of options)h+=`<option value="${esc(x.id)}">${esc(x.name)} · ${x.minutes} мин</option>`;
+     h+='</select></div>';
+   }
+   h+='</div>';
+   if((p.slots.indexOf(slot)+1)%3===0)h+='</div>';
+ }
+ h+='<div class="panel"><h2>Единая корзина на неделю</h2>';
+ const currentConfirm=b.confirmedTotal!==null;
+ h+=`<div class="value">${currentConfirm?money(b.confirmedTotal):'Полный итог пока неизвестен'}</div>`;
+ h+=`<p class="muted">${currentConfirm?'Все включённые позиции покрыты свежими остатками и актуальными розничными ценами. Окончательный чек подтвердит магазин.':'Последние известные суммы отдельных позиций: '+money(b.referenceAmount)+'. Это НЕ стоимость заказа: часть цен исторические либо отсутствует.'}</p>`;
+ h+=`<p class="small">Позиции: ${b.items.length} · Без свежего остатка: ${b.items.filter(x=>x.stock!=='in_stock').length} · Без свежей цены: ${b.items.filter(x=>!x.priceCurrent).length} · Нехватка: ${b.shortages.length}</p>`;
+ if(p.filled<p.totalSlots)h+=`<p class="error">${p.totalSlots-p.filled} блюд не подобрано: в каталоге нет подтверждённых подходящих сочетаний при ваших ограничениях.</p>`;
+ if(prefs.budget){h+=`<p class="small">Бюджет: ${money(prefs.budget)}. ${currentConfirm?b.confirmedTotal<=prefs.budget?'Собранная корзина укладывается в бюджет по данным последней выгрузки.':'Внимание: корзина превышает выбранный бюджет.':'Проверка бюджета заблокирована неполными данными.'}</p>`;}
+ h+='</div><div class="panel"><h2>Товары и допустимые замены</h2>';
+ for(const it of b.items){const opts=(it.ing.product_ids||[]).map(id=>catalog.byProduct[id]).filter(x=>C.validProduct(x,it.ing)&&C.availability(x,catalog)!=='out_of_stock');
+ h+=`<div class="product"><div class="product-head"><b>${esc(it.ing.name)}</b><span class="amount">${it.priceCurrent?money(it.cost):'цену уточнить'}</span></div>`;
+ h+=`<p class="small">${esc(it.p.name)} · ${it.packs} ${it.p.pricing_mode==='by_pack'?'уп.':'вес. позиции'} · ${qfmt(it.quantity)} ${esc(it.p.unit)} · ${esc(STATUS[it.stock])}${it.p.sku_code?' · код '+esc(it.p.sku_code):''}</p>`;
+ if(it.priceKnown&&!it.priceCurrent)h+=`<p class="small">Последняя известная стоимость ${money(it.cost)} · не текущая цена</p>`;
+ if(opts.length>1){h+=`<label class="small" for="select-${esc(it.ingredient)}">Другая фасовка или марка</label><select id="select-${esc(it.ingredient)}" data-ingredient="${esc(it.ingredient)}">`;
+ for(const op of opts)h+=`<option value="${esc(op.id)}" ${op.id===it.p.id?'selected':''}>${esc(op.name)} · ${esc(STATUS[C.availability(op,catalog)])}</option>`;
+ h+='</select>';
  }
  h+='</div>';
- if(q.multi)h+='<button class="btn" id="next">Собрать меню</button>';
- if(state.step)h+='<button class="btn secondary" id="back">Назад</button>';
- $.innerHTML=h;
- $.querySelectorAll('[data-answer]').forEach(b=>b.addEventListener('click',()=>{
- let v=b.dataset.answer;
- if(q.multi){let i=state.a.excl.indexOf(v);i<0?state.a.excl.push(v):state.a.excl.splice(i,1)}
- else{state.a[q.id]=Number(v);state.step++}
- render();
- }));
- if(q.multi)document.getElementById('next').onclick=()=>{state.step++;render()};
- if(state.step>0){let back=document.getElementById('back');if(back)back.onclick=()=>{state.step--;render()}}
-}
-function suggestion(p,ing){let label=p.name+(stockStatus(p)==='in_stock'?' · есть по последней сверке':' · наличие не подтверждено');return esc(label)}
-function cartText(b){
- let txt=`Заявка на уточнение корзины · Паллета\n7 ужинов на ${state.a.people} чел.\n`;
- for(const i of b.items)txt+=`${i.p?i.p.name:i.ing.name} — ${i.p?qfmt(i.qty)+' '+i.p.unit:'нет подтвержденной замены'}${i.p?.sku_code?' ['+i.p.sku_code+']':''}\n`;
- txt+='\nЦена и наличие НЕ подтверждены на сегодня. Прошу проверить корзину, возможные замены, итог и условия доставки.';
- return txt;
-}
-function renderResult(){
- const {pool,menu}=plan();
- if(!menu.length){$.innerHTML='<div class="note"><b>Нет подходящих блюд.</b> При заданных ограничениях и данных об отсутствии товаров нельзя собрать меню. Измените условия или обновите ассортимент.</div><button class="btn" id="restart">Изменить условия</button>';document.getElementById('restart').onclick=()=>{state.step=0;render()};return}
- const b=basket(menu);const unknown=b.items.filter(i=>i.stock==='unknown').length;
- const missingPrice=b.items.filter(i=>!i.priceKnown).length;
- const outdated=b.items.filter(i=>i.priceKnown&&!i.isCurrent).length;
- let h='<div class="bar"><span style="width:100%"></span></div><h1>Ваше меню на неделю</h1>';
- h+='<div class="note"><b>Предварительный подбор.</b> Подключение к 1С не настроено. Наличие большинства товаров неизвестно. Цены ниже исторические или из ранее согласованных ценников.</div>';
- h+=`<p class="muted">7 ужинов · ${state.a.people} чел. · ${pool.length} подходящих различных блюд</p>`;
- menu.forEach((r,i)=>h+=`<div class="day"><b>${DAYS[i]}</b><span>${esc(r.name)}</span><small>${r.minutes} мин</small></div>`);
- if(pool.length<7)h+='<p class="muted">Подходящих блюд меньше семи, поэтому некоторые повторяются. Время приготовления и исключения соблюдены.</p>';
- h+='<div class="panel"><h2>Продуктовая корзина</h2>';
- h+=`<div class="value">${b.priced?money(b.totalKnown):'Сумма неизвестна'}</div>`;
- h+=`<p class="muted">${b.priced?'Только сумма '+b.priced+' позиций по последним известным ценам, НЕ текущая стоимость заказа.':'Нет подтверждённых цен.'}</p>`;
- h+=`<p class="small">Непроверенное наличие: ${unknown} поз. · Без цены: ${missingPrice} поз. · Устаревшие известные цены: ${outdated} поз.</p>`;
- if(state.a.budget)h+=`<p class="small">Ориентир бюджета: ${money(state.a.budget)}. ${b.allCurrent?'Текущий итог можно сопоставить с бюджетом после проверки остатков.':'Сравнивать с бюджетом пока нельзя.'}</p>`;
- h+='</div><div class="panel"><h2>Ингредиенты и замены</h2>';
- b.items.forEach(i=>{
- const {ing,p}=i;
- h+=`<div class="product"><div class="product-head"><b>${esc(ing.name)}</b><span class="amount">${i.priceKnown?money(i.cost):'Цена неизвестна'}</span></div>`;
- if(p){h+=`<div>${esc(p.name)} <span class="label">${i.stock==='in_stock'?'наличие подтверждено':'наличие уточнить'}</span></div>`;
- h+=`<div class="small">В корзине: ${qfmt(i.qty)} ${esc(p.unit)} (${i.packs} × ${qfmt(p.pack_size)} ${esc(p.unit)})${p.sku_code?' · код '+esc(p.sku_code):''}</div>`;
- if(i.priceKnown)h+=`<div class="small">${i.isCurrent?'Актуальная цена по файлу':'Цена не проверена сегодня'} · источник ${esc(p.price_as_of||'неизвестен')}</div>`;
- }else h+='<p class="warning">Нет доступной замены в текущем каталоге</p>';
- const valid=ing.product_ids.map(id=>products[id]).filter(p=>usable(p,ing)&&stockStatus(p)!=='out_of_stock');
- if(valid.length>1){h+=`<label class="small" for="sel-${esc(ing.id)}">Выбрать вариант (без гарантии наличия)</label><select id="sel-${esc(ing.id)}" data-ing="${esc(ing.id)}">`;
- valid.forEach(x=>h+=`<option value="${esc(x.id)}"${x.id===p?.id?' selected':''}>${suggestion(x,ing)}</option>`);
- h+='</select>'}
- const incompatible=ing.product_ids.map(id=>products[id]).filter(x=>x&&!usable(x,ing));
- if(incompatible.length)h+=`<p class="small">Другие варианты требуют ручной проверки фасовки: ${incompatible.map(x=>esc(x.name)).join('; ')}.</p>`;
- h+=`<details><summary class="small">Что ещё можно рассмотреть</summary><p class="small">[Возможная замена, не подтверждённый товар Паллеты] ${esc(ing.substitution_hint)}</p></details>`;
+ }
+ if(!b.items.length)h+='<p class="small">Составить корзину не удалось.</p>';
  h+='</div>';
- });h+='</div>';
- h+='<button class="btn" id="copy">Скопировать заявку на уточнение</button><button class="btn secondary" id="shuffle">Другое меню</button><button class="btn secondary" id="restart">Изменить условия</button>';
- h+='<details class="panel"><summary>Откуда товары и цены</summary><p class="small">Fresh: историческая средняя по 31-дневной выгрузке на 24.09.2026. Makfa, Злато и Вкуснотеево: рабочие цены от 05.10.2026. Нет актуального файла остатков. Магазин должен подтвердить цену и наличие перед оформлением.</p></details>';
+ h+='<div class="panel"><h2>Какие SKU стоит проверить</h2><p class="small">Это рекомендации для сверки в 1С, а не утверждение, что товаров нет в магазине.</p>';
+ const uncovered=catalog.ingredients.filter(i=>!(i.product_ids||[]).some(id=>{const pr=catalog.byProduct[id];return C.validProduct(pr,i)&&C.availability(pr,catalog)==='in_stock';}));
+ const important=uncovered.slice(0,10);
+ for(const i of important)h+=`<div class="product"><b>${esc(i.name)}</b><div class="small">${esc(i.substitution_hint||'Проверить подходящий SKU и актуальное наличие')}</div></div>`;
+ h+='<p class="small">Идеи завтраков из публичного демо berbena.pro, ещё не сопоставленные с ассортиментом: овсяные хлопья, бананы, семена чиа, кокосовое молоко. Они не включены в заказ.</p></div>';
+ h+='<button class="btn" id="copy">Скопировать заявку на проверку</button><button class="btn secondary" id="shuffle">Другое сочетание блюд</button><button class="btn secondary" id="restart">Изменить условия</button>';
+ h+='<p class="muted">* Соль, вода и специи для многих рецептов не включены в продуктовую корзину; порции носят редакционный характер. Аллергенная безопасность не проверена, фильтры не заменяют изучение состава товара.</p>';
  $.innerHTML=h;
- $.querySelectorAll('[data-ing]').forEach(sel=>sel.onchange=()=>{state.chosen[sel.dataset.ing]=sel.value;renderResult()});
- document.getElementById('copy').onclick=async()=>{let t=cartText(b);try{await navigator.clipboard.writeText(t);document.getElementById('copy').textContent='Заявка скопирована'}catch(e){let ta=document.createElement('textarea');ta.value=t;document.body.append(ta);ta.select();try{document.execCommand('copy');document.getElementById('copy').textContent='Заявка скопирована'}catch(_){window.prompt('Скопируйте заявку:',t)}ta.remove()}};
- document.getElementById('shuffle').onclick=()=>{state.seed++;window.scrollTo(0,0);renderResult()};
- document.getElementById('restart').onclick=()=>{state.step=0;state.chosen={};window.scrollTo(0,0);render()};
+ $.querySelectorAll('[data-slot]').forEach(sel=>sel.onchange=()=>{if(!sel.value)return;const orig=fixed[sel.dataset.slot];fixed[sel.dataset.slot]=sel.value;const check=C.plan(catalog,recipes,prefs,{seed,fixed,selected:chosen});
+  const target=check.slots.find(s=>s.key===sel.dataset.slot);
+  if(!target?.recipe){if(orig===undefined)delete fixed[sel.dataset.slot];else fixed[sel.dataset.slot]=orig;renderResult('Выбранное блюдо не удаётся обеспечить в рамках доступных запасов. Предложите другую замену.');}
+  else renderResult('Блюдо заменено. Корзина пересчитана; при ограниченных остатках другие блюда тоже могут измениться.');
+ });
+ $.querySelectorAll('[data-ingredient]').forEach(sel=>sel.onchange=()=>{chosen[sel.dataset.ingredient]=sel.value;renderResult('Товар заменён. Итог и остатки пересчитаны для всей недели.');});
+ document.getElementById('copy').onclick=async()=>{const t=basketText(lastPlan),btn=document.getElementById('copy');try{await navigator.clipboard.writeText(t);btn.textContent='Заявка скопирована';}catch(e){const ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();if(document.execCommand('copy'))btn.textContent='Заявка скопирована';else window.prompt('Скопируйте заявку:',t);ta.remove();}};
+ document.getElementById('shuffle').onclick=()=>{seed++;fixed={};window.scrollTo(0,0);renderResult();};
+ document.getElementById('restart').onclick=()=>{step=0;fixed={};chosen={};window.scrollTo(0,0);render();};
 }
-function render(){state.step<QUESTIONS.length?renderQuestion():renderResult()}
+function render(){step<Q.length?renderQuestion():renderResult();}
 async function init(){
  try{
- const [c,r]=await Promise.all(['products.json','recipes.json'].map(async file=>{const res=await fetch('./'+file,{cache:'no-store'});if(!res.ok)throw Error(`${file}: HTTP ${res.status}`);return res.json()}));
- if(!c?.products?.length||!r?.recipes?.length)throw Error('Пустой каталог или база рецептов');
- catalog=c;recipes=r.recipes;products=Object.fromEntries(c.products.map(p=>[p.id,p]));ingredients=Object.fromEntries(c.ingredients.map(ing=>[ing.id,ing]));
- for(let recipe of recipes)for(let key of Object.keys(recipe.ingredients_per_person))if(!ingredients[key])throw Error('Неизвестный ингредиент: '+key);
- render();
- }catch(e){$.innerHTML='<div class="note"><b>Каталог не загрузился.</b> Проверьте публикацию всех файлов и попробуйте обновить страницу. <div class="small">'+esc(e.message)+'</div></div><button class="btn" id="retry">Повторить</button>';document.getElementById('retry').onclick=init}
+  if(!window.fetch)throw Error('Браузер не поддерживает загрузку каталога');
+  const [p,r]=await Promise.all(['products.json','recipes.json'].map(async f=>{const ans=await fetch('./'+f+'?v=4',{cache:'no-store'});if(!ans.ok)throw Error(f+': HTTP '+ans.status);return ans.json();}));
+  catalog=C.normalize(p);recipes=r.recipes;C.checkRecipes(recipes,catalog);if(recipes.length===0)throw Error('Нет рецептов');render();
+ }catch(e){$.innerHTML=`<div class="note"><b>Не удалось загрузить каталог.</b><div class="small">${esc(e.message)}</div></div><button class="btn" id="retry">Повторить</button>`;document.getElementById('retry').onclick=init;}
 }
 init();
 })();

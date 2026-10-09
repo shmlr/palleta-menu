@@ -1,0 +1,157 @@
+{
+  "schema_version": 1,
+  "recipes": [
+    {
+      "id": "hinkal",
+      "name": "Хинкал с курицей",
+      "minutes": 60,
+      "tags": [
+        "gluten"
+      ],
+      "ingredients_per_person": {
+        "chicken": 0.2,
+        "flour": 0.1,
+        "onion": 0.05,
+        "greens": 0.1
+      }
+    },
+    {
+      "id": "pilaf",
+      "name": "Плов с курицей",
+      "minutes": 60,
+      "tags": [],
+      "ingredients_per_person": {
+        "rice": 0.1,
+        "chicken": 0.2,
+        "carrot": 0.08,
+        "onion": 0.06,
+        "oil": 0.02
+      }
+    },
+    {
+      "id": "lentil_soup",
+      "name": "Чечевичный суп",
+      "minutes": 40,
+      "tags": [],
+      "ingredients_per_person": {
+        "lentil": 0.06,
+        "carrot": 0.05,
+        "onion": 0.05,
+        "potato": 0.1,
+        "oil": 0.01
+      }
+    },
+    {
+      "id": "chicken_soup",
+      "name": "Куриный суп с лапшой",
+      "minutes": 40,
+      "tags": [
+        "gluten"
+      ],
+      "ingredients_per_person": {
+        "chicken": 0.15,
+        "noodles": 0.04,
+        "potato": 0.1,
+        "carrot": 0.04,
+        "onion": 0.04
+      }
+    },
+    {
+      "id": "pumpkin_chudu",
+      "name": "Чуду с тыквой",
+      "minutes": 50,
+      "tags": [
+        "gluten"
+      ],
+      "ingredients_per_person": {
+        "flour": 0.12,
+        "pumpkin": 0.2,
+        "onion": 0.04,
+        "oil": 0.02,
+        "eggs": 0.5
+      }
+    },
+    {
+      "id": "baked_fish",
+      "name": "Белая рыба с овощами",
+      "minutes": 35,
+      "tags": [
+        "fish"
+      ],
+      "ingredients_per_person": {
+        "fish": 0.2,
+        "potato": 0.2,
+        "tomato": 0.1,
+        "onion": 0.04,
+        "oil": 0.01
+      }
+    },
+    {
+      "id": "stuffed_pepper",
+      "name": "Фаршированный перец",
+      "minutes": 60,
+      "tags": [],
+      "ingredients_per_person": {
+        "pepper": 0.25,
+        "mince": 0.12,
+        "rice": 0.03,
+        "onion": 0.04,
+        "tomato": 0.1
+      }
+    },
+    {
+      "id": "chicken_zucchini",
+      "name": "Рагу из курицы и кабачков",
+      "minutes": 35,
+      "tags": [],
+      "ingredients_per_person": {
+        "chicken": 0.15,
+        "zucchini": 0.15,
+        "potato": 0.15,
+        "tomato": 0.1,
+        "pepper": 0.08,
+        "onion": 0.04
+      }
+    },
+    {
+      "id": "omelet",
+      "name": "Омлет с овощами и зеленью",
+      "minutes": 15,
+      "tags": [
+        "dairy"
+      ],
+      "ingredients_per_person": {
+        "eggs": 2,
+        "tomato": 0.08,
+        "greens": 0.05,
+        "milk": 0.05
+      }
+    },
+    {
+      "id": "syrniki",
+      "name": "Сырники",
+      "minutes": 25,
+      "tags": [
+        "dairy",
+        "gluten"
+      ],
+      "ingredients_per_person": {
+        "cottage": 0.15,
+        "eggs": 0.5,
+        "flour": 0.03
+      }
+    },
+    {
+      "id": "meatballs",
+      "name": "Котлеты с рисом и томатами",
+      "minutes": 40,
+      "tags": [],
+      "ingredients_per_person": {
+        "mince": 0.15,
+        "rice": 0.08,
+        "onion": 0.04,
+        "tomato": 0.1
+      }
+    }
+  ]
+}

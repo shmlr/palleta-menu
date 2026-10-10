@@ -2,13 +2,13 @@
 # Requires external UT scheduled exporter, local Python and Git authentication.
 # No tokens or 1C credentials are stored here.
 # PriceType must EXACTLY match price_type column from the controlled UT exporter.
-# Visible UT price label is Розничная, RUB. Keep currency/type separate inside UT if needed;
+# Оптовая, RUB = price for Palleta cardholders; never use purchase or regular retail. Keep currency/type separate inside UT if needed;
 # do not derive from a purchase/wholesale price.
 param(
   [string]$RepoDir = 'D:\PalletaMenu',
   [string]$UTCsv = 'D:\PalletaExport\ut_public_catalog.csv',
   [string]$StoreKey = '',
-  [string]$PriceType = 'Розничная, RUB',
+  [string]$PriceType = 'Оптовая, RUB',
   [string]$Python = 'py',
   [int]$MaxAgeMinutes = 20
 )
@@ -16,6 +16,7 @@ $ErrorActionPreference = 'Stop'
 if ([string]::IsNullOrWhiteSpace($StoreKey) -or [string]::IsNullOrWhiteSpace($PriceType)) {
   throw 'Specify approved -StoreKey. PriceType defaults to the approved UT display label: Розничная, RUB'
 }
+if ($PriceType -cne 'Оптовая, RUB') { throw 'Only club-card type Оптовая, RUB is permitted' }
 if (-not (Test-Path -LiteralPath $RepoDir -PathType Container)) { throw "No repo: $RepoDir" }
 if (-not (Test-Path -LiteralPath $UTCsv -PathType Leaf)) { throw "No UT CSV: $UTCsv" }
 if ((Get-Item -LiteralPath $UTCsv).LastWriteTime -lt (Get-Date).AddMinutes(-$MaxAgeMinutes)) {

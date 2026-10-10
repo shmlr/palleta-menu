@@ -11,7 +11,7 @@ function availability(p,c,now=Date.now()){
  if(p.availability==='in_stock'&&Number.isFinite(p.stock_quantity)&&p.stock_quantity>0)return 'in_stock';
  return 'unknown';
 }
-function priceCurrent(p,c,now=Date.now()){return p.price_source==='current_retail'&&Number.isFinite(p.price)&&p.price>=0&&fresh(p.price_as_of,c.price_freshness_hours*60,now);}
+function priceCurrent(p,c,now=Date.now()){return c.price_policy?.price_type==='Оптовая, RUB'&&c.price_policy?.audience==='club_card'&&p.price_source==='current_club'&&p.price_type==='Оптовая, RUB'&&Number.isFinite(p.price)&&p.price>=0&&fresh(p.price_as_of,c.price_freshness_hours*60,now);}
 function validProduct(p,ing){return !!p&&p.compatible_with_recipe!==false&&p.unit===ing.unit&&Number.isFinite(p.pack_size)&&p.pack_size>0&&['by_pack','by_weight'].includes(p.pricing_mode);}
 function candidateOptions(ing,c,forced,now){
  const products=c.byProduct;
@@ -42,7 +42,7 @@ function allocateIngredient(ing,needed,c,selected={},now=Date.now()){
   if(packs<=0)continue;
   const q=Number((packs*o.p.pack_size).toFixed(5));
   rest=Math.max(0,rest-q);
-  const p=o.p;const priceKnown=Number.isFinite(p.price)&&p.price>=0;
+  const p=o.p;const priceKnown=p.price_source==='current_club'&&p.price_type==='Оптовая, RUB'&&Number.isFinite(p.price)&&p.price>=0;
   alloc.push({ingredient:ing.id,p,quantity:q,packs,stock:o.status,priceKnown,priceCurrent:priceCurrent(p,c,now),cost:priceKnown?Number((p.pricing_mode==='by_pack'?p.price*packs:p.price*q).toFixed(2)):null});
  }
  return {ingredient:ing.id,required:needed,alloc,short:rest>EPS?Number(rest.toFixed(5)):0,unknown:alloc.some(x=>x.stock==='unknown')};

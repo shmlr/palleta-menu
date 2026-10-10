@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Import one approved UT 11 export of public retail prices + saleable inventory.
+"""Import one approved UT 11 export of CLUB-CARD prices + saleable inventory.
 
 No 1C network access. No GitHub network access. CSV is created by a controlled
 1C UT 11 export for exactly one shop, one approved price type and whitelisted SKU.
@@ -13,7 +13,8 @@ import math
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
-FIELDS = ('store_key', 'sku_code', 'price_type', 'retail_price', 'price_unit',
+CLUB_PRICE_TYPE = 'Оптовая, RUB'
+FIELDS = ('store_key', 'sku_code', 'price_type', 'club_price', 'price_unit',
           'available_quantity', 'stock_unit', 'captured_at')
 STOP_VALUES = {'', 'STORE_KEY_FROM_1C', 'YOUR_STORE_KEY', 'PRICE_TYPE_FROM_UT', 'YOUR_PRICE_TYPE'}
 
@@ -49,6 +50,8 @@ def convert(source: Path, catalog_path: Path, store_key: str, price_type: str,
             now: dt.datetime | None = None) -> dict:
     if store_key.strip() in STOP_VALUES or price_type.strip() in STOP_VALUES:
         raise ValueError('Explicit approved --store-key and --price-type are required')
+    if price_type.strip() != CLUB_PRICE_TYPE:
+        raise ValueError(f'Only cardholder club price type {CLUB_PRICE_TYPE!r} allowed')
     if max_age_minutes <= 0:
         raise ValueError('max-age-minutes must be positive')
     if now is None:
@@ -86,9 +89,9 @@ def convert(source: Path, catalog_path: Path, store_key: str, price_type: str,
             expected = 'pack' if pack else product['unit']
             if row['price_unit'].strip() != expected or row['stock_unit'].strip() != expected:
                 raise ValueError(f'{sku}: price/stock units mismatch, expected {expected!r}')
-            price = numeric(row['retail_price'], f'{sku} retail_price', True)
+            price = numeric(row['club_price'], f'{sku} club_price', True)
             if not math.isclose(price, round(price, 2), abs_tol=1e-7):
-                raise ValueError(f'{sku}: retail price has more than 2 decimal digits')
+                raise ValueError(f'{sku}: club price has more than 2 decimal digits')
             qty = numeric(row['available_quantity'], f'{sku} available_quantity', False)
             if pack and not qty.is_integer():
                 raise ValueError(f'{sku}: package stock must be integer')
@@ -101,12 +104,13 @@ def convert(source: Path, catalog_path: Path, store_key: str, price_type: str,
     for sku, (price, qty, moment) in rows.items():
         product = by_code[sku]
         t = moment.isoformat(timespec='seconds')
-        product.update(price=price, price_as_of=t, price_source='current_retail',
+        product.update(price=price, price_as_of=t, price_source='current_club', price_audience='club_card',
                        price_source_system='1C_UT_11', price_type=price_type,
                        stock_quantity=qty,
                        availability='in_stock' if qty > 0 else 'out_of_stock',
                        availability_checked_at=t, stock_source_system='1C_UT_11')
-    catalog['data_status'] = 'ut11_approved_prices_saleable_stock_csv'
+    catalog['data_status'] = 'ut11_approved_club_prices_saleable_stock_csv'
+    catalog['price_policy'] = {'price_type': CLUB_PRICE_TYPE, 'audience': 'club_card', 'description': 'Только по клубной карте Паллеты'}
     catalog['sync_source_store_key'] = store_key
     catalog['sync_source_price_type'] = price_type
     catalog['price_snapshot_at'] = max(x[2] for x in rows.values()).isoformat(timespec='seconds')

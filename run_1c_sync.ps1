@@ -1,17 +1,20 @@
 # Palleta sync: single approved UT 11 export -> public GitHub catalog.
 # Requires external UT scheduled exporter, local Python and Git authentication.
 # No tokens or 1C credentials are stored here.
+# PriceType must EXACTLY match price_type column from the controlled UT exporter.
+# Visible UT price label is Розничная, RUB. Keep currency/type separate inside UT if needed;
+# do not derive from a purchase/wholesale price.
 param(
   [string]$RepoDir = 'D:\PalletaMenu',
   [string]$UTCsv = 'D:\PalletaExport\ut_public_catalog.csv',
   [string]$StoreKey = '',
-  [string]$PriceType = '',
+  [string]$PriceType = 'Розничная, RUB',
   [string]$Python = 'py',
   [int]$MaxAgeMinutes = 20
 )
 $ErrorActionPreference = 'Stop'
 if ([string]::IsNullOrWhiteSpace($StoreKey) -or [string]::IsNullOrWhiteSpace($PriceType)) {
-  throw 'Specify approved -StoreKey and -PriceType from the UT export'
+  throw 'Specify approved -StoreKey. PriceType defaults to the approved UT display label: Розничная, RUB'
 }
 if (-not (Test-Path -LiteralPath $RepoDir -PathType Container)) { throw "No repo: $RepoDir" }
 if (-not (Test-Path -LiteralPath $UTCsv -PathType Leaf)) { throw "No UT CSV: $UTCsv" }

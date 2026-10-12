@@ -6,7 +6,8 @@
     "Часть фасованной продукции: согласованные рабочие цены от 05.10.2026. Они не доказывают наличие и текущую цену.",
     "Всё наличие пока UNKNOWN. Нет интеграции с 1С или автоматического обновления.",
     "Исторические обычные розничные цены не подтверждают клубные цены и не используются в расчёте клубной корзины.",
-    "12.10.2026: в ведомости УТ артикул риса Мистраль 900 г = 10213; Код для поиска не подтвержден, sku_code очищен."
+    "12.10.2026: в ведомости УТ артикул риса Мистраль 900 г = 10213; Код для поиска не подтвержден, sku_code очищен.",
+    "13.10.2026: склад Паллета Петра 1; УТ отчёт показывает коды рис УТ-00001079 и картофель УТ-00003202 в колонке 'Номенклатура.К...' с обрезанным заголовком. Это кандидаты на сверку с каноническим Кодом для поиска. Наличие резервов владелец отрицает; фактическая доступность и WMS остаются для проверки."
   ],
   "price_freshness_hours": 24,
   "stock_freshness_minutes": 60,
@@ -79,7 +80,9 @@
       "source": "catalog",
       "compatible_with_recipe": true,
       "article": "10213",
-      "sku_code_status": "pending_verification_search_code"
+      "sku_code_status": "pending_verification_search_code",
+      "ut_report_code": "УТ-00001079",
+      "ut_report_code_status": "visible_in_inventory_report_header_truncated_not_search_code_verified"
     },
     {
       "id": "makfa_flour_2000",
@@ -249,7 +252,9 @@
       "availability_checked_at": null,
       "stock_quantity": null,
       "source": "historical",
-      "compatible_with_recipe": true
+      "compatible_with_recipe": true,
+      "ut_report_code": "УТ-00003202",
+      "ut_report_code_status": "visible_in_inventory_report_and_matches_existing_sku_code"
     },
     {
       "id": "onion",

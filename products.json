@@ -7,7 +7,9 @@
     "Всё наличие пока UNKNOWN. Нет интеграции с 1С или автоматического обновления.",
     "Исторические обычные розничные цены не подтверждают клубные цены и не используются в расчёте клубной корзины.",
     "12.10.2026: в ведомости УТ артикул риса Мистраль 900 г = 10213; Код для поиска не подтвержден, sku_code очищен.",
-    "13.10.2026: склад Паллета Петра 1; УТ отчёт показывает коды рис УТ-00001079 и картофель УТ-00003202 в колонке 'Номенклатура.К...' с обрезанным заголовком. Это кандидаты на сверку с каноническим Кодом для поиска. Наличие резервов владелец отрицает; фактическая доступность и WMS остаются для проверки."
+    "13.10.2026: склад Паллета Петра 1; УТ отчёт показывает коды рис УТ-00001079 и картофель УТ-00003202 в колонке 'Номенклатура.К...' с обрезанным заголовком. Это кандидаты на сверку с каноническим Кодом для поиска. Наличие резервов владелец отрицает; фактическая доступность и WMS остаются для проверки.",
+    "13.10.2026: «Номенклатура.Код для поиска» видно полностью: картофель=3202, рис Мистраль Янтарь 900 г=1079. Розничный вид Оптовая для держателей карт: 49,96 ₽/кг и 179,97 ₽/шт; источник — ручной снимок «Печать ценников из документа», не live-файл.",
+    "13.10.2026: не подтверждённые повторно префиксные УТ-коды 7 других SKU сохранены как legacy_sku_code; автоматический whitelist только по двум проверенным кодам. Учётные остатки 823,316 кг и 5 шт. не опубликованы как доступные."
   ],
   "price_freshness_hours": 24,
   "stock_freshness_minutes": 60,
@@ -67,22 +69,26 @@
       "id": "mistral_rice_900",
       "ingredient": "rice",
       "name": "Рис Мистраль Янтарь пропаренный, 900 г",
-      "sku_code": null,
+      "sku_code": "1079",
       "unit": "кг",
       "pack_size": 0.9,
       "pricing_mode": "by_pack",
-      "price": null,
-      "price_as_of": null,
-      "price_source": null,
+      "price": 179.97,
+      "price_as_of": "2026-10-13",
+      "price_source": "manual_club_snapshot",
       "availability": "unknown",
       "availability_checked_at": null,
       "stock_quantity": null,
       "source": "catalog",
       "compatible_with_recipe": true,
       "article": "10213",
-      "sku_code_status": "pending_verification_search_code",
+      "sku_code_status": "verified_report",
       "ut_report_code": "УТ-00001079",
-      "ut_report_code_status": "visible_in_inventory_report_header_truncated_not_search_code_verified"
+      "ut_report_code_status": "visible_in_inventory_report_header_truncated_not_search_code_verified",
+      "sku_code_source": "1C_UT11_report_Nomenclature_Code_for_search_2026-10-13",
+      "price_type": "Оптовая, RUB",
+      "price_audience": "club_card",
+      "barcode": "4601916000564"
     },
     {
       "id": "makfa_flour_2000",
@@ -241,26 +247,31 @@
       "id": "potato",
       "ingredient": "potato",
       "name": "Картофель",
-      "sku_code": "УТ-00003202",
+      "sku_code": "3202",
       "unit": "кг",
       "pack_size": 0.1,
       "pricing_mode": "by_weight",
-      "price": 50.2608204079,
-      "price_as_of": "2026-09-24",
-      "price_source": "historical_average",
+      "price": 49.96,
+      "price_as_of": "2026-10-13",
+      "price_source": "manual_club_snapshot",
       "availability": "unknown",
       "availability_checked_at": null,
       "stock_quantity": null,
       "source": "historical",
       "compatible_with_recipe": true,
       "ut_report_code": "УТ-00003202",
-      "ut_report_code_status": "visible_in_inventory_report_and_matches_existing_sku_code"
+      "ut_report_code_status": "visible_in_inventory_report_and_matches_existing_sku_code",
+      "legacy_sku_code": "УТ-00003202",
+      "sku_code_source": "1C_UT11_report_Nomenclature_Code_for_search_2026-10-13",
+      "sku_code_status": "verified_report",
+      "price_type": "Оптовая, RUB",
+      "price_audience": "club_card"
     },
     {
       "id": "onion",
       "ingredient": "onion",
       "name": "Лук репчатый",
-      "sku_code": "УТ-00001185",
+      "sku_code": null,
       "unit": "кг",
       "pack_size": 0.1,
       "pricing_mode": "by_weight",
@@ -271,13 +282,15 @@
       "availability_checked_at": null,
       "stock_quantity": null,
       "source": "historical",
-      "compatible_with_recipe": true
+      "compatible_with_recipe": true,
+      "legacy_sku_code": "УТ-00001185",
+      "sku_code_status": "pending_verification_code_for_search"
     },
     {
       "id": "carrot",
       "ingredient": "carrot",
       "name": "Морковь",
-      "sku_code": "УТ-00001447",
+      "sku_code": null,
       "unit": "кг",
       "pack_size": 0.1,
       "pricing_mode": "by_weight",
@@ -288,13 +301,15 @@
       "availability_checked_at": null,
       "stock_quantity": null,
       "source": "historical",
-      "compatible_with_recipe": true
+      "compatible_with_recipe": true,
+      "legacy_sku_code": "УТ-00001447",
+      "sku_code_status": "pending_verification_code_for_search"
     },
     {
       "id": "tomato",
       "ingredient": "tomato",
       "name": "Помидоры Новичок",
-      "sku_code": "УТ-00020184",
+      "sku_code": null,
       "unit": "кг",
       "pack_size": 0.1,
       "pricing_mode": "by_weight",
@@ -305,13 +320,15 @@
       "availability_checked_at": null,
       "stock_quantity": null,
       "source": "historical",
-      "compatible_with_recipe": true
+      "compatible_with_recipe": true,
+      "legacy_sku_code": "УТ-00020184",
+      "sku_code_status": "pending_verification_code_for_search"
     },
     {
       "id": "pepper",
       "ingredient": "pepper",
       "name": "Перец зелёный болгарский",
-      "sku_code": "УТ-00001729",
+      "sku_code": null,
       "unit": "кг",
       "pack_size": 0.1,
       "pricing_mode": "by_weight",
@@ -322,13 +339,15 @@
       "availability_checked_at": null,
       "stock_quantity": null,
       "source": "historical",
-      "compatible_with_recipe": true
+      "compatible_with_recipe": true,
+      "legacy_sku_code": "УТ-00001729",
+      "sku_code_status": "pending_verification_code_for_search"
     },
     {
       "id": "zucchini",
       "ingredient": "zucchini",
       "name": "Кабачки",
-      "sku_code": "УТ-00000753",
+      "sku_code": null,
       "unit": "кг",
       "pack_size": 0.1,
       "pricing_mode": "by_weight",
@@ -339,13 +358,15 @@
       "availability_checked_at": null,
       "stock_quantity": null,
       "source": "historical",
-      "compatible_with_recipe": true
+      "compatible_with_recipe": true,
+      "legacy_sku_code": "УТ-00000753",
+      "sku_code_status": "pending_verification_code_for_search"
     },
     {
       "id": "pumpkin",
       "ingredient": "pumpkin",
       "name": "Тыква",
-      "sku_code": "УТ-00007197",
+      "sku_code": null,
       "unit": "кг",
       "pack_size": 0.1,
       "pricing_mode": "by_weight",
@@ -356,13 +377,15 @@
       "availability_checked_at": null,
       "stock_quantity": null,
       "source": "historical",
-      "compatible_with_recipe": true
+      "compatible_with_recipe": true,
+      "legacy_sku_code": "УТ-00007197",
+      "sku_code_status": "pending_verification_code_for_search"
     },
     {
       "id": "dill",
       "ingredient": "greens",
       "name": "Укроп",
-      "sku_code": "УТ-00002606",
+      "sku_code": null,
       "unit": "пучок",
       "pack_size": 1,
       "pricing_mode": "by_pack",
@@ -373,7 +396,9 @@
       "availability_checked_at": null,
       "stock_quantity": null,
       "source": "historical",
-      "compatible_with_recipe": true
+      "compatible_with_recipe": true,
+      "legacy_sku_code": "УТ-00002606",
+      "sku_code_status": "pending_verification_code_for_search"
     }
   ],
   "ingredients": [

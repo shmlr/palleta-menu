@@ -79,6 +79,7 @@ function renderResult(message=''){
  h+=`<div class="product"><div class="product-head"><b>${esc(it.ing.name)}</b><span class="amount">${it.priceCurrent?money(it.cost):'цену уточнить'}</span></div>`;
  h+=`<p class="small">${esc(it.p.name)} · ${it.packs} ${it.p.pricing_mode==='by_pack'?'уп.':'вес. позиции'} · ${qfmt(it.quantity)} ${esc(it.p.unit)} · ${esc(STATUS[it.stock])}${it.p.sku_code?' · код '+esc(it.p.sku_code):''}</p>`;
  if(it.priceKnown&&!it.priceCurrent)h+=`<p class="small">Последняя известная клубная стоимость ${money(it.cost)} · не текущая цена</p>`;
+ if(it.p.price_source==='manual_club_snapshot'&&Number.isFinite(it.p.price)){h+=`<p class="small">Клубная цена на ${esc(it.p.price_as_of)}: ${money(it.p.price)} за ${it.p.pricing_mode==='by_pack'?'упаковку':esc(it.p.unit)}. Справочно, не текущая цена.</p>`;}
  if(opts.length>1){h+=`<label class="small" for="select-${esc(it.ingredient)}">Другая фасовка или марка</label><select id="select-${esc(it.ingredient)}" data-ingredient="${esc(it.ingredient)}">`;
  for(const op of opts)h+=`<option value="${esc(op.id)}" ${op.id===it.p.id?'selected':''}>${esc(op.name)} · ${esc(STATUS[C.availability(op,catalog)])}</option>`;
  h+='</select>';

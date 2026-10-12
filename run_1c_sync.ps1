@@ -1,5 +1,6 @@
 # Palleta sync: single approved UT 11 export -> public GitHub catalog.
 # Requires external UT scheduled exporter, local Python and Git authentication.
+# StoreKey is a public integration alias, NOT an actual 1C warehouse GUID.
 # No tokens or 1C credentials are stored here.
 # PriceType must EXACTLY match price_type column from the controlled UT exporter.
 # Оптовая, RUB = price for Palleta cardholders; never use purchase or regular retail. Keep currency/type separate inside UT if needed;
@@ -7,14 +8,14 @@
 param(
   [string]$RepoDir = 'D:\PalletaMenu',
   [string]$UTCsv = 'D:\PalletaExport\ut_public_catalog.csv',
-  [string]$StoreKey = '',
+  [string]$StoreKey = 'PALLETA_TRADE_HALL',
   [string]$PriceType = 'Оптовая, RUB',
   [string]$Python = 'py',
   [int]$MaxAgeMinutes = 20
 )
 $ErrorActionPreference = 'Stop'
 if ([string]::IsNullOrWhiteSpace($StoreKey) -or [string]::IsNullOrWhiteSpace($PriceType)) {
-  throw 'Specify approved -StoreKey. PriceType defaults to the approved UT display label: Розничная, RUB'
+  throw 'StoreKey and club PriceType must be configured for Palleta trading floor'
 }
 if ($PriceType -cne 'Оптовая, RUB') { throw 'Only club-card type Оптовая, RUB is permitted' }
 if (-not (Test-Path -LiteralPath $RepoDir -PathType Container)) { throw "No repo: $RepoDir" }

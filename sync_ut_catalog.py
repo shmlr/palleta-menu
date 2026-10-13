@@ -125,7 +125,7 @@ def convert(source: Path, catalog_path: Path, store_key: str, price_type: str,
         temp.write_text(payload, encoding='utf-8')
         temp.replace(catalog_path)
     return {'mapped_skus': len(pairs),
-            'unmapped_skus': len(catalog['products']) - len(codes),
+            'unmapped_skus': len(catalog['products']) - len(pairs),
             'dry_run': dry_run,
             'snapshot_utc': catalog['price_snapshot_at']}
 

@@ -14,7 +14,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 CLUB_PRICE_TYPE = 'Оптовая, RUB'
-FIELDS = ('store_key', 'sku_code', 'price_type', 'club_price', 'price_unit',
+FIELDS = ('store_key', 'internal_code', 'sku_code', 'price_type', 'club_price', 'price_unit',
           'available_quantity', 'stock_unit', 'captured_at')
 STOP_VALUES = {'', 'STORE_KEY_FROM_1C', 'YOUR_STORE_KEY', 'PRICE_TYPE_FROM_UT', 'YOUR_PRICE_TYPE'}
 
@@ -61,10 +61,12 @@ def convert(source: Path, catalog_path: Path, store_key: str, price_type: str,
     now = now.astimezone(dt.timezone.utc)
     catalog = json.loads(catalog_path.read_text(encoding='utf-8'))
     selected = [p for p in catalog['products'] if p.get('sku_code')]
-    by_code = {str(p['sku_code']).strip(): p for p in selected}
-    if len(selected) != len(by_code) or not selected:
-        raise ValueError('Mapped product whitelist must be non-empty with unique sku_code')
-    codes = set(by_code)
+    if not selected or any(not p.get('internal_code') for p in selected):
+        raise ValueError('Every live SKU mapping must have both search code and internal UT code')
+    by_pair = {(str(p['internal_code']).strip(), str(p['sku_code']).strip()):p for p in selected}
+    if len(by_pair)!=len(selected) or len({k[0] for k in by_pair})!=len(selected):
+        raise ValueError('Duplicate internal UT code or (internal_code,sku_code) pair in whitelist')
+    pairs=set(by_pair)
     rows = {}
     if not source.is_file():
         raise ValueError('Approved UT CSV missing')
@@ -76,15 +78,17 @@ def convert(source: Path, catalog_path: Path, store_key: str, price_type: str,
             if None in row or any(v is None for v in row.values()):
                 raise ValueError(f'CSV row {number}: malformed/extra fields')
             sku = row['sku_code'].strip()
-            if sku not in codes:
-                raise ValueError(f'CSV row {number}: SKU outside approved public whitelist: {sku!r}')
-            if sku in rows:
-                raise ValueError(f'CSV row {number}: duplicate SKU: {sku!r}')
+            internal = row['internal_code'].strip()
+            pair = (internal,sku)
+            if pair not in pairs:
+                raise ValueError(f'CSV row {number}: (internal_code,sku_code) pair outside approved whitelist: {pair!r}')
+            if pair in rows:
+                raise ValueError(f'CSV row {number}: duplicate pair: {pair!r}')
             if row['store_key'].strip() != store_key:
-                raise ValueError(f'{sku}: store_key mismatch')
+                raise ValueError(f'{pair}: store_key mismatch')
             if row['price_type'].strip() != price_type:
-                raise ValueError(f'{sku}: price_type mismatch')
-            product = by_code[sku]
+                raise ValueError(f'{pair}: price_type mismatch')
+            product = by_pair[pair]
             pack = product['pricing_mode'] == 'by_pack'
             expected = 'pack' if pack else product['unit']
             if row['price_unit'].strip() != expected or row['stock_unit'].strip() != expected:
@@ -96,13 +100,13 @@ def convert(source: Path, catalog_path: Path, store_key: str, price_type: str,
             if pack and not qty.is_integer():
                 raise ValueError(f'{sku}: package stock must be integer')
             moment = timestamp(row['captured_at'], now, max_age_minutes)
-            rows[sku] = (round(price, 2), qty, moment)
-    missing = codes - set(rows)
+            rows[pair] = (round(price, 2), qty, moment)
+    missing = pairs - set(rows)
     if missing:
-        raise ValueError(f'Incomplete UT export: missing {len(missing)} SKU: {sorted(missing)[:20]}')
-    # Mutate only after validating every row, including the timestamp and price type.
-    for sku, (price, qty, moment) in rows.items():
-        product = by_code[sku]
+        raise ValueError(f'Incomplete UT export: missing {len(missing)} identifier pairs: {sorted(missing)[:20]}')
+    # Mutate only after validating every row, including both identifiers, time and club price type.
+    for pair, (price, qty, moment) in rows.items():
+        product = by_pair[pair]
         t = moment.isoformat(timespec='seconds')
         product.update(price=price, price_as_of=t, price_source='current_club', price_audience='club_card',
                        price_source_system='1C_UT_11', price_type=price_type,
@@ -120,7 +124,7 @@ def convert(source: Path, catalog_path: Path, store_key: str, price_type: str,
         temp = catalog_path.with_suffix('.json.tmp')
         temp.write_text(payload, encoding='utf-8')
         temp.replace(catalog_path)
-    return {'mapped_skus': len(codes),
+    return {'mapped_skus': len(pairs),
             'unmapped_skus': len(catalog['products']) - len(codes),
             'dry_run': dry_run,
             'snapshot_utc': catalog['price_snapshot_at']}

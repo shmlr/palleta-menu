@@ -8,12 +8,12 @@ from sync_ut_catalog import convert
 
 T = dt.datetime(2026, 10, 9, 18, 0, tzinfo=dt.timezone.utc)
 S='2026-10-09T20:58:00+03:00'
-HEAD='store_key;sku_code;price_type;club_price;price_unit;available_quantity;stock_unit;captured_at\n'
-A='P1;AA;Оптовая, RUB;53,90;кг;15;кг;'+S+'\n'
-B='P1;BB;Оптовая, RUB;109,90;pack;3;pack;'+S+'\n'
+HEAD='store_key;internal_code;sku_code;price_type;club_price;price_unit;available_quantity;stock_unit;captured_at\n'
+A='P1;УТ-00000001;AA;Оптовая, RUB;53,90;кг;15;кг;'+S+'\n'
+B='P1;УТ-00000002;BB;Оптовая, RUB;109,90;pack;3;pack;'+S+'\n'
 DATA={'products':[
- {'id':'a','sku_code':'AA','unit':'кг','pricing_mode':'by_weight','price':None,'stock_quantity':None},
- {'id':'b','sku_code':'BB','unit':'кг','pricing_mode':'by_pack','price':None,'stock_quantity':None},
+ {'id':'a','internal_code':'УТ-00000001','sku_code':'AA','unit':'кг','pricing_mode':'by_weight','price':None,'stock_quantity':None},
+ {'id':'b','internal_code':'УТ-00000002','sku_code':'BB','unit':'кг','pricing_mode':'by_pack','price':None,'stock_quantity':None},
  {'id':'c','sku_code':None,'unit':'л','pricing_mode':'by_pack','price':None,'stock_quantity':None},
 ]}
 class TestUT(unittest.TestCase):
@@ -34,9 +34,9 @@ class TestUT(unittest.TestCase):
  def test_dry_run(self):
   before=self.j.read_bytes();self.conv();self.assertEqual(before,self.j.read_bytes())
  def test_missing(self):self.assert_bad(HEAD+A)
- def test_extra(self):self.assert_bad(HEAD+A+B+'P1;CC;Оптовая, RUB;12;pack;3;pack;'+S+'\n')
+ def test_extra(self):self.assert_bad(HEAD+A+B+'P1;УТ-00000003;CC;Оптовая, RUB;12;pack;3;pack;'+S+'\n')
  def test_duplicate(self):self.assert_bad(HEAD+A+B+A)
- def test_shop(self):self.assert_bad(HEAD+A+B.replace('P1;BB','P2;BB'))
+ def test_shop(self):self.assert_bad(HEAD+A+B.replace('P1;УТ-00000002;BB','P2;УТ-00000002;BB'))
  def test_type(self):self.assert_bad(HEAD+A+B.replace(';Оптовая, RUB;',';Розничная, RUB;'))
  def test_unit(self):self.assert_bad(HEAD+A+B.replace(';pack;3;pack;',';кг;3;pack;'))
  def test_fractional_stock(self):self.assert_bad(HEAD+A+B.replace(';pack;3;pack;',';pack;1,5;pack;'))
@@ -52,4 +52,13 @@ class TestUT(unittest.TestCase):
  def test_overprecision(self):self.assert_bad(HEAD+A+B.replace('109,90','109,999'))
  def test_placeholder(self):
   with self.assertRaises(ValueError):convert(self.f,self.j,'STORE_KEY_FROM_1C','Оптовая, RUB',now=T)
+ def test_short_search_code_collision_cannot_substitute(self):
+  self.assert_bad(HEAD + A.replace('УТ-00000001;AA','УТ-00000002;AA') + B)
+ def test_internal_code_mismatch_stops(self):
+  self.assert_bad(HEAD + A + B.replace('УТ-00000002;BB','УТ-99999999;BB'))
+ def test_legacy_csv_without_internal_code_stops(self):
+  self.assert_bad((HEAD+A+B).replace('internal_code;','').replace('УТ-00000001;','').replace('УТ-00000002;',''))
+ def test_unverified_catalog_missing_internal_code_stops(self):
+  obj=json.loads(self.j.read_text());obj['products'][0].pop('internal_code');self.j.write_text(json.dumps(obj),encoding='utf8')
+  with self.assertRaises(ValueError):self.conv(True)
 if __name__=='__main__':unittest.main(verbosity=2)

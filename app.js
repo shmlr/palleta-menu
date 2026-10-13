@@ -8,6 +8,34 @@ const money=n=>Number(n).toLocaleString('ru-RU',{minimumFractionDigits:2,maximum
 const qfmt=n=>Number(Number(n).toFixed(3)).toLocaleString('ru-RU');
 const STATUS={in_stock:'подтверждено по выгрузке',unknown:'остаток уточняется',out_of_stock:'нет по выгрузке'};
 let catalog,recipes,step=0,seed=1,fixed={},chosen={},prefs={people:4,time:60,budget:0,excl:[]},lastPlan;
+let checkedItems=new Set();
+const STORE_KEY='palleta-menu-v1';
+function saveState(){
+ try{if(!window.localStorage)return;window.localStorage.setItem(STORE_KEY,JSON.stringify({step,seed,prefs,fixed,chosen,checked:[...checkedItems]}));}catch(e){}
+}
+function loadState(){
+ try{
+  const s=JSON.parse(window.localStorage?.getItem(STORE_KEY)||'null');if(!s||typeof s!=='object')return;
+  if([0,1,2,3,4].includes(s.step))step=s.step;
+  if(Number.isSafeInteger(s.seed)&&s.seed>0&&s.seed<1000000)seed=s.seed;
+  if(s.prefs&&typeof s.prefs==='object'){
+   prefs.people=[1,2,3,4,5,6].includes(s.prefs.people)?s.prefs.people:4;
+   prefs.time=[30,45,60,999].includes(s.prefs.time)?s.prefs.time:60;
+   prefs.budget=[0,5000,8000,12000].includes(s.prefs.budget)?s.prefs.budget:0;
+   prefs.excl=Array.isArray(s.prefs.excl)?s.prefs.excl.filter(x=>['fish','dairy','gluten','eggs'].includes(x)):[];
+  }
+  const ids=new Set(recipes.map(r=>r.id));
+  if(s.fixed&&typeof s.fixed==='object')for(const [k,v]of Object.entries(s.fixed)){
+   if(/^[0-6]-(breakfast|lunch|dinner)$/.test(k)&&ids.has(v))fixed[k]=v;
+  }
+  if(s.chosen&&typeof s.chosen==='object')for(const [k,v]of Object.entries(s.chosen)){
+   if(catalog.byIngredient[k]&&catalog.byProduct[v]&&catalog.byIngredient[k].product_ids.includes(v))chosen[k]=v;
+  }
+  const valid=new Set(catalog.products.map(p=>p.id));
+  if(Array.isArray(s.checked))checkedItems=new Set(s.checked.filter(x=>valid.has(x)));
+ }catch(e){}
+}
+
 const Q=[
  {key:'people',name:'На сколько человек готовим?',choices:[['1',1],['2',2],['3',3],['4',4],['5',5],['6',6]],cols:true},
  {key:'time',name:'Максимальное время на одно блюдо?',choices:[['До 30 минут',30],['До 45 минут',45],['До 60 минут',60],['Без ограничения',999]]},
@@ -22,6 +50,7 @@ function renderQuestion(){
  for(const [label,val] of q.choices){const marked=q.multi?prefs.excl.includes(val):prefs[q.key]===val;h+=`<button class="choice${marked?' selected':''}" data-answer="${esc(val)}" aria-pressed="${marked?'true':'false'}">${esc(label)}</button>`;}
  h+='</div>';
  if(q.multi)h+='<button class="btn" id="next">Собрать 21 блюдо</button>';
+ if(step===0)h+='<button class="btn secondary" id="quickstart">Сразу показать пример меню на неделю</button>';
  if(step)h+='<button class="btn secondary" id="back">Назад</button>';
  $.innerHTML=h;
  $.querySelectorAll('[data-answer]').forEach(b=>b.onclick=()=>{const value=b.dataset.answer;
@@ -29,6 +58,7 @@ function renderQuestion(){
   fixed={};render();
  });
  if(q.multi)document.getElementById('next').onclick=()=>{step=Q.length;render()};
+ if(step===0)document.getElementById('quickstart').onclick=()=>{step=Q.length;render()};
  if(step)document.getElementById('back').onclick=()=>{step--;render()};
 }
 function renderRecipeDetails(r){return `<details><summary class="small">Как готовить и состав на порцию</summary><p class="small">${Object.entries(r.ingredients_per_person).map(([id,v])=>`${esc(catalog.byIngredient[id].name)} ${qfmt(v)} ${esc(catalog.byIngredient[id].unit)}`).join(' · ')}</p><ol>${r.steps.map(t=>`<li class="small">${esc(t)}</li>`).join('')}</ol><p class="small">${esc(r.pantry_note)}</p></details>`;}
@@ -67,16 +97,16 @@ function renderResult(message=''){
    h+='</div>';
    if((p.slots.indexOf(slot)+1)%3===0)h+='</div>';
  }
- h+='<div class="panel"><h2>Единая корзина на неделю</h2>';
+ h+='<div class="panel" id="shopping"><h2>Единая корзина на неделю</h2>';
  const currentConfirm=b.confirmedTotal!==null;
  h+=`<div class="value">${currentConfirm?money(b.confirmedTotal):'Полный итог пока неизвестен'}</div>`;
  h+=`<p class="muted">${currentConfirm?'Все позиции покрыты свежими остатками и клубными ценами из УТ 11. Расчёт действует при предъявлении карты; чек подтвердит магазин.':'Клубный итог пока неизвестен: нужны свежие подтверждённые цены по карте и остатки. Исторические розничные цены не учитываются.'}</p>`;
  h+=`<p class="small">Позиции: ${b.items.length} · Без свежего остатка: ${b.items.filter(x=>x.stock!=='in_stock').length} · Без свежей цены: ${b.items.filter(x=>!x.priceCurrent).length} · Нехватка: ${b.shortages.length}</p>`;
  if(p.filled<p.totalSlots)h+=`<p class="error">${p.totalSlots-p.filled} блюд не подобрано: в каталоге нет подтверждённых подходящих сочетаний при ваших ограничениях.</p>`;
  if(prefs.budget){h+=`<p class="small">Бюджет: ${money(prefs.budget)}. ${currentConfirm?b.confirmedTotal<=prefs.budget?'Собранная корзина укладывается в бюджет по данным последней выгрузки.':'Внимание: корзина превышает выбранный бюджет.':'Проверка бюджета заблокирована неполными данными.'}</p>`;}
- h+='</div><div class="panel"><h2>Товары и допустимые замены</h2>';
+ h+='</div><div class="panel"><h2>Список покупок <span class="pill" id="check-count">'+b.items.filter(x=>checkedItems.has(x.p.id)).length+' / '+b.items.length+' отмечено</span></h2><p class="muted">Отмечайте купленное. Галочки сохраняются только на вашем устройстве.</p>';
  for(const it of b.items){const opts=(it.ing.product_ids||[]).map(id=>catalog.byProduct[id]).filter(x=>C.validProduct(x,it.ing)&&C.availability(x,catalog)!=='out_of_stock');
- h+=`<div class="product"><div class="product-head"><b>${esc(it.ing.name)}</b><span class="amount">${it.priceCurrent?money(it.cost):'цену уточнить'}</span></div>`;
+ h+=`<div class="product"><div class="product-head"><label class="check-row"><input class="shopping-check" type="checkbox" data-check="${esc(it.p.id)}" ${checkedItems.has(it.p.id)?'checked':''} aria-label="Куплено: ${esc(it.p.name)}"><span class="basket-name">${esc(it.ing.name)}</span></label><span class="amount">${it.priceCurrent?money(it.cost):'цену уточнить'}</span></div>`;
  h+=`<p class="small">${esc(it.p.name)} · ${it.packs} ${it.p.pricing_mode==='by_pack'?'уп.':'вес. позиции'} · ${qfmt(it.quantity)} ${esc(it.p.unit)} · ${esc(STATUS[it.stock])}${it.p.sku_code?' · код '+esc(it.p.sku_code):''}</p>`;
  if(it.priceKnown&&!it.priceCurrent)h+=`<p class="small">Последняя известная клубная стоимость ${money(it.cost)} · не текущая цена</p>`;
  if(it.p.price_source==='manual_club_snapshot'&&Number.isFinite(it.p.price)){h+=`<p class="small">Клубная цена на ${esc(it.p.price_as_of)}: ${money(it.p.price)} за ${it.p.pricing_mode==='by_pack'?'упаковку':esc(it.p.unit)}. Справочно, не текущая цена.</p>`;}
@@ -93,26 +123,39 @@ function renderResult(message=''){
  const important=uncovered.slice(0,10);
  for(const i of important)h+=`<div class="product"><b>${esc(i.name)}</b><div class="small">${esc(i.substitution_hint||'Проверить подходящий SKU и актуальное наличие')}</div></div>`;
  h+='<p class="small">Идеи завтраков из публичного демо berbena.pro, ещё не сопоставленные с ассортиментом: овсяные хлопья, бананы, семена чиа, кокосовое молоко. Они не включены в заказ.</p></div>';
- h+='<button class="btn" id="copy">Скопировать заявку на проверку</button><button class="btn secondary" id="shuffle">Другое сочетание блюд</button><button class="btn secondary" id="restart">Изменить условия</button>';
+ h+='<button class="btn" id="copy">Скопировать меню и список продуктов</button><button class="btn secondary" id="share">Поделиться списком</button><button class="btn secondary" id="print">Распечатать или сохранить PDF</button><button class="btn secondary" id="clearchecks">Снять отметки с покупок</button><button class="btn secondary" id="shuffle">Другое сочетание блюд</button><button class="btn secondary" id="restart">Изменить условия</button>';
  h+='<p class="muted">* Соль, вода и специи для многих рецептов не включены в продуктовую корзину; порции носят редакционный характер. Аллергенная безопасность не проверена, фильтры не заменяют изучение состава товара.</p>';
  $.innerHTML=h;
+ saveState();
+ $.querySelectorAll('[data-check]').forEach(el=>el.onchange=()=>{
+  if(el.checked)checkedItems.add(el.dataset.check);else checkedItems.delete(el.dataset.check);
+  saveState();
+  const count=document.getElementById('check-count');
+  if(count)count.textContent=b.items.filter(x=>checkedItems.has(x.p.id)).length+' / '+b.items.length+' отмечено';
+ });
  $.querySelectorAll('[data-slot]').forEach(sel=>sel.onchange=()=>{if(!sel.value)return;const orig=fixed[sel.dataset.slot];fixed[sel.dataset.slot]=sel.value;const check=C.plan(catalog,recipes,prefs,{seed,fixed,selected:chosen});
   const target=check.slots.find(s=>s.key===sel.dataset.slot);
   if(!target?.recipe){if(orig===undefined)delete fixed[sel.dataset.slot];else fixed[sel.dataset.slot]=orig;renderResult('Выбранное блюдо не удаётся обеспечить в рамках доступных запасов. Предложите другую замену.');}
   else renderResult('Блюдо заменено. Корзина пересчитана; при ограниченных остатках другие блюда тоже могут измениться.');
  });
  $.querySelectorAll('[data-ingredient]').forEach(sel=>sel.onchange=()=>{chosen[sel.dataset.ingredient]=sel.value;renderResult('Товар заменён. Итог и остатки пересчитаны для всей недели.');});
- document.getElementById('copy').onclick=async()=>{const t=basketText(lastPlan),btn=document.getElementById('copy');try{await navigator.clipboard.writeText(t);btn.textContent='Заявка скопирована';}catch(e){const ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();if(document.execCommand('copy'))btn.textContent='Заявка скопирована';else window.prompt('Скопируйте заявку:',t);ta.remove();}};
+ document.getElementById('copy').onclick=async()=>{const t=basketText(lastPlan),btn=document.getElementById('copy');try{await navigator.clipboard.writeText(t);btn.textContent='Список скопирован';}catch(e){const ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();if(document.execCommand('copy'))btn.textContent='Список скопирован';else window.prompt('Скопируйте список:',t);ta.remove();}};
+ document.getElementById('share').onclick=async()=>{const t=basketText(lastPlan);if(navigator.share){try{await navigator.share({title:'Паллета: меню на неделю',text:t});return;}catch(e){if(e.name==='AbortError')return;}}
+  try{await navigator.clipboard.writeText(t);document.getElementById('share').textContent='Список скопирован';}catch(e){window.prompt('Скопируйте список:',t);}
+ };
+ document.getElementById('print').onclick=()=>{window.print?.();};
+ document.getElementById('clearchecks').onclick=()=>{checkedItems.clear();renderResult('Отметки покупок сняты.');};
  document.getElementById('shuffle').onclick=()=>{seed++;fixed={};window.scrollTo(0,0);renderResult();};
  document.getElementById('restart').onclick=()=>{step=0;fixed={};chosen={};window.scrollTo(0,0);render();};
 }
-function render(){step<Q.length?renderQuestion():renderResult();}
+function render(){step<Q.length?renderQuestion():renderResult();saveState();}
 async function init(){
  try{
   if(!window.fetch)throw Error('Браузер не поддерживает загрузку каталога');
   const [p,r]=await Promise.all(['products.json','recipes.json'].map(async f=>{const ans=await fetch('./'+f+'?v=4',{cache:'no-store'});if(!ans.ok)throw Error(f+': HTTP '+ans.status);return ans.json();}));
-  catalog=C.normalize(p);recipes=r.recipes;C.checkRecipes(recipes,catalog);if(recipes.length===0)throw Error('Нет рецептов');render();
+  catalog=C.normalize(p);recipes=r.recipes;C.checkRecipes(recipes,catalog);if(recipes.length===0)throw Error('Нет рецептов');loadState();render();
  }catch(e){$.innerHTML=`<div class="note"><b>Не удалось загрузить каталог.</b><div class="small">${esc(e.message)}</div></div><button class="btn" id="retry">Повторить</button>`;document.getElementById('retry').onclick=init;}
 }
+if(typeof navigator!=='undefined'&&'serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
 init();
 })();

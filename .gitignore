@@ -1,0 +1,9 @@
+# Local UT and min-max exports must never be committed to public GitHub
+*.xlsx
+*.xls
+reports/
+staging/
+raw/
+*.token
+.env*
+__pycache__/

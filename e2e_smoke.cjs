@@ -21,6 +21,14 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
   await page.getByRole('heading',{name:'Семейное меню на 7 дней'}).waitFor();
   const slots=await page.locator('.slot').count();
   assert.equal(slots,21,'must render 21 planned meals');
+  const wa=page.locator('#whatsapp');
+  await wa.waitFor();
+  const href=await wa.getAttribute('href');
+  assert(href.startsWith('https://wa.me/79882040001?text='),'WhatsApp must point to owner supplied number');
+  const payload=decodeURIComponent(new URL(href).searchParams.get('text'));
+  assert(payload.includes('Список покупок:')&&payload.includes('фактическое наличие'));
+  assert(payload.includes('Заявка предварительная.')&&payload.length<3000);
+
   await page.reload({waitUntil:'networkidle'});
   await page.getByRole('heading',{name:'Что приготовить на этой неделе?'}).waitFor();
   assert(await page.getByRole('button',{name:'Продолжить сохранённое меню'}).isVisible(),'revisit should allow resume');
@@ -36,7 +44,7 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
   await page.getByRole('heading',{name:'На сколько человек готовим?'}).waitFor();
   await page.screenshot({path:'/tmp/palleta-home-test.png',fullPage:true});
   assert.deepEqual(appErrors,[],'no client-side JS errors');
-  console.log('PASS real Chrome: fresh landing + resume + reload + original URL + 21 meals + questionnaire');
+  console.log('PASS real Chrome: landing + resume + WhatsApp link + 21 meals + questionnaire');
   await context.close();
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

@@ -13,6 +13,7 @@ let catalog,recipes,step=0,seed=1,fixed={},chosen={},prefs={people:4,time:60,bud
 let view='home',hasSavedPlan=false;
 let checkedItems=new Set();
 const STORE_KEY='palleta-menu-v1';
+const WHATSAPP_NUMBER='79882040001';
 function saveState(){
  try{if(!window.localStorage)return;window.localStorage.setItem(STORE_KEY,JSON.stringify({step,seed,prefs,fixed,chosen,checked:[...checkedItems]}));}catch(e){}
 }
@@ -48,7 +49,7 @@ const Q=[
 ];
 function explainSource(){const latest=[...catalog.products].filter(x=>x.availability_checked_at).map(x=>Date.parse(x.availability_checked_at)).filter(Number.isFinite);const when=latest.length?new Date(Math.max(...latest)).toLocaleString('ru-RU'):'нет подтверждённых выгрузок';return when;}
 function renderHome(){
- let h='<div class="home-hero"><span class="pill">Паллета · меню для семьи</span><h1>Что приготовить на этой неделе?</h1><p class="home-lead">Подберите завтраки, обеды и ужины на 7 дней. Мы соберём продукты в один список покупок.</p><div class="home-stats"><div><b>7</b><span>дней</span></div><div><b>21</b><span>блюдо</span></div><div><b>42</b><span>рецепта</span></div></div><button class="btn" id="start-menu">Составить меню</button>';
+ let h='<div class="home-hero"><span class="pill">Паллета · меню для семьи</span><h1>Что приготовить на этой неделе?</h1><p class="home-lead">Подберите завтраки, обеды и ужины на 7 дней. Мы соберём продукты в один список покупок.</p><div class="home-stats"><div><b>7</b><span>дней</span></div><div><b>21</b><span>блюдо</span></div><div><b>'+recipes.length+'</b><span>рецепта</span></div></div><button class="btn" id="start-menu">Составить меню</button>';
  if(hasSavedPlan)h+='<button class="btn secondary" id="continue-menu">Продолжить сохранённое меню</button>';
  else h+='<button class="btn secondary" id="demo-menu">Посмотреть пример меню</button>';
  h+='</div><div class="panel home-about"><h2>Как это работает</h2><p><b>1.</b> Выберите количество человек, время и ограничения.</p><p><b>2.</b> Получите меню, меняйте блюда и подходящие продукты.</p><p><b>3.</b> Отмечайте продукты в списке покупок. Меню сохраняется на устройстве.</p></div><p class="muted">Клубные цены показаны справочно с датой. Наличие и итоговую сумму подтвердит магазин.</p>';
@@ -96,6 +97,20 @@ function basketText(result){
  t+='\nПожалуйста, проверьте цены, фактические остатки, возможные замены и условия доставки. Сумма не является подтверждённым заказом.';
  return t;
 }
+function whatsappOrderText(result){
+ const lines=['Здравствуйте! Прошу проверить наличие и собрать продукты в «Паллете» по меню на неделю.',
+  'На '+prefs.people+' чел. · '+result.filled+' из '+result.totalSlots+' блюд.',
+  'Список покупок:'];
+ for(const it of result.basket.items){
+  const quantity=it.p.pricing_mode==='by_weight'?qfmt(it.quantity)+' '+it.p.unit:it.packs+' уп. по '+qfmt(it.p.pack_size)+' '+it.p.unit;
+  lines.push('• '+it.p.name+' — '+quantity);
+ }
+ if(result.basket.shortages.length)lines.push('Не подобраны: '+result.basket.shortages.map(i=>i.name||i.id).join(', '));
+ lines.push('Прошу подтвердить фактическое наличие, клубные цены, возможные замены и итоговую сумму.');
+ lines.push('Заявка предварительная. До подтверждения магазином заказ не оформлен.');
+ return lines.join('\n');
+}
+function whatsappHref(result){return 'https://wa.me/'+WHATSAPP_NUMBER+'?text='+encodeURIComponent(whatsappOrderText(result));}
 function renderResult(message=''){
  hasSavedPlan=true;
  lastPlan=C.plan(catalog,recipes,prefs,{seed,fixed,selected:chosen});
@@ -133,6 +148,7 @@ function renderResult(message=''){
  h+=`<div class="product"><div class="product-head"><label class="check-row"><input class="shopping-check" type="checkbox" data-check="${esc(it.p.id)}" ${checkedItems.has(it.p.id)?'checked':''} aria-label="Куплено: ${esc(it.p.name)}"><span class="basket-name">${esc(it.ing.name)}</span></label><span class="amount">${it.priceCurrent?money(it.cost):ref!==null?'≈ '+money(ref):'цену уточнить'}</span></div>`;
  const qty=it.p.pricing_mode==='by_pack'?`${it.packs} уп. по ${qfmt(it.p.pack_size)} ${esc(it.p.unit)} · всего ${qfmt(it.quantity)} ${esc(it.p.unit)}`:`${qfmt(it.quantity)} ${esc(it.p.unit)}`;
  h+=`<p class="small">${esc(it.p.name)} · ${qty} · ${esc(STATUS[it.stock])}${it.p.sku_code?' · код '+esc(it.p.sku_code):''}</p>`;
+ if(it.ing.assortment_confirmed_by_owner)h+='<p class="small success">Зелень есть в ассортименте Паллеты (со слов магазина). Вид, цену и наличие уточняют при сборке.</p>';
  if(it.priceKnown&&!it.priceCurrent)h+=`<p class="small">Последняя известная клубная стоимость ${money(it.cost)} · не текущая цена</p>`;
  if(ref!==null&&!it.priceCurrent){h+=`<p class="small">Клубная цена на ${esc(humanDate(it.p.price_as_of))}: ${money(it.p.price)} за ${it.p.pricing_mode==='by_pack'?'упаковку':esc(it.p.unit)}. Справочно, не текущая цена.</p>`;}
  if(opts.length>1){h+=`<label class="small" for="select-${esc(it.ingredient)}">Заменить на аналог или другую фасовку</label><select id="select-${esc(it.ingredient)}" data-ingredient="${esc(it.ingredient)}">`;
@@ -144,12 +160,14 @@ function renderResult(message=''){
  if(!b.items.length)h+='<p class="small">Составить корзину не удалось.</p>';
  h+='</div>';
  h+='<div class="panel"><h2>Какие SKU стоит проверить</h2><p class="small">Это рекомендации для сверки в 1С, а не утверждение, что товаров нет в магазине.</p>';
- const uncovered=catalog.ingredients.filter(i=>!(i.product_ids||[]).some(id=>{const pr=catalog.byProduct[id];return C.validProduct(pr,i)&&C.availability(pr,catalog)==='in_stock';}));
+ const uncovered=catalog.ingredients.filter(i=>!i.assortment_confirmed_by_owner&&!(i.product_ids||[]).some(id=>{const pr=catalog.byProduct[id];return C.validProduct(pr,i)&&C.availability(pr,catalog)==='in_stock';}));
  const important=uncovered.slice(0,10);
  for(const i of important)h+=`<div class="product"><b>${esc(i.name)}</b><div class="small">${esc(i.substitution_hint||'Проверить подходящий SKU и актуальное наличие')}</div></div>`;
  h+='<p class="small">Идеи завтраков из публичного демо berbena.pro, ещё не сопоставленные с ассортиментом: овсяные хлопья, бананы, семена чиа, кокосовое молоко. Они не включены в заказ.</p></div>';
  h+='<button class="btn" id="copy">Скопировать меню и список продуктов</button><button class="btn secondary" id="share">Поделиться списком</button><button class="btn secondary" id="print">Распечатать или сохранить PDF</button><button class="btn secondary" id="clearchecks">Снять отметки с покупок</button><button class="btn secondary" id="shuffle">Другое сочетание блюд</button><button class="btn secondary" id="restart">Изменить условия</button>';
- h+='<p class="muted">* Соль, вода и специи для многих рецептов не включены в продуктовую корзину; порции носят редакционный характер. Аллергенная безопасность не проверена, фильтры не заменяют изучение состава товара.</p>';
+ h+='<div class="panel wa-section"><h2>Готово! Отправьте список в Паллету</h2><p class="small">Список подготовлен из выбранных продуктов. Магазин уточнит клубные цены, наличие и возможные замены.</p><a class="btn wa-link" id="whatsapp" href="'+esc(whatsappHref(lastPlan))+'" target="_blank" rel="noopener noreferrer">Отправить список в WhatsApp ↗</a><p class="small">Получатель: +7 988 204-00-01. WhatsApp откроет готовое сообщение: проверьте его и нажмите «Отправить». Без подтверждения магазина заказ ещё не оформлен.</p></div>';
+if(prefs.time<90)h+='<p class="small">Для блюд из куриных потрохов выберите «Без ограничения» по времени: им требуется больше времени, чем куриному филе.</p>';
+h+='<p class="muted">* Соль, вода и специи для многих рецептов не включены в продуктовую корзину; порции носят редакционный характер. Аллергенная безопасность не проверена, фильтры не заменяют изучение состава товара.</p>';
  $.innerHTML=h;
  saveState();
  document.getElementById('home-from-result').onclick=showHome;
@@ -178,7 +196,7 @@ function render(){if(view==='home')renderHome();else if(step<Q.length)renderQues
 async function init(){
  try{
   if(!window.fetch)throw Error('Браузер не поддерживает загрузку каталога');
-  const [p,r]=await Promise.all(['products.json','recipes.json'].map(async f=>{const ans=await fetch('./'+f+'?v=7',{cache:'no-store'});if(!ans.ok)throw Error(f+': HTTP '+ans.status);return ans.json();}));
+  const [p,r]=await Promise.all(['products.json','recipes.json'].map(async f=>{const ans=await fetch('./'+f+'?v=9',{cache:'no-store'});if(!ans.ok)throw Error(f+': HTTP '+ans.status);return ans.json();}));
   catalog=C.normalize(p);recipes=r.recipes;C.checkRecipes(recipes,catalog);if(recipes.length===0)throw Error('Нет рецептов');loadState();render();
  }catch(e){$.innerHTML=`<div class="note"><b>Не удалось загрузить каталог.</b><div class="small">${esc(e.message)}</div></div><button class="btn" id="retry">Повторить</button>`;document.getElementById('retry').onclick=init;}
 }

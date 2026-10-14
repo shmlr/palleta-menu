@@ -25,7 +25,7 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
   await wa.waitFor();
   const href=await wa.getAttribute('href');
   assert(href.startsWith('https://wa.me/79882040001?text='),'WhatsApp must point to owner supplied number');
-  const payload=decodeURIComponent(new URL(href).searchParams.get('text'));
+  const payload=new URL(href).searchParams.get('text');
   assert(payload.includes('Список покупок:')&&payload.includes('фактическое наличие'));
   assert(payload.includes('Заявка предварительная.')&&payload.length<3000);
 

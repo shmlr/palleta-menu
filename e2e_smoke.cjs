@@ -53,7 +53,7 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
   assert.equal(await own.getAttribute('data-home'),ownedIngredient);
   assert.equal(await own.isChecked(),true);
   const ownerText=new URL(await page.locator('#whatsapp').getAttribute('href')).searchParams.get('text');
-  const ownedTitle=(await page.locator('#at-home .product b').first().innerText()).trim();
+  const ownedTitle=(await page.locator('#at-home .product label').first().innerText()).trim();
   assert(!ownerText.includes('• '+ownedTitle+' —'),'owned product must not be in WhatsApp');
 
   for(const forbidden of ['Фарш говяжий','Куриные потроха','Филе куриное','Куриное филе','Куриная грудка'])assert(!payload.includes(forbidden),'meat appeared in WhatsApp: '+forbidden);

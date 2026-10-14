@@ -35,6 +35,8 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
   await page.getByRole('heading',{name:'Семейное меню на 7 дней'}).waitFor();
   const slots=await page.locator('.slot').count();
   assert.equal(slots,21,'must render 21 planned meals');
+  await page.locator('[data-slot="0-lunch"]').selectOption('chicken_soup');
+  assert(await page.locator('#outside-store').isVisible(),'external ingredients should have a separate block');
   const wa=page.locator('#whatsapp');
   await wa.waitFor();
   const href=await wa.getAttribute('href');
@@ -42,6 +44,8 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
   const payload=new URL(href).searchParams.get('text');
   assert(payload.includes('Список покупок:')&&payload.includes('фактическое наличие'));
   assert(payload.includes('Заявка предварительная.')&&payload.length<3000);
+  for(const forbidden of ['Фарш говяжий','Куриные потроха','Филе куриное','Куриное филе','Куриная грудка'])assert(!payload.includes(forbidden),'meat appeared in WhatsApp: '+forbidden);
+  assert(/курин|фарш|мяс/i.test(await page.locator('#outside-store').innerText()));
 
   await page.reload({waitUntil:'networkidle'});
   await page.getByRole('heading',{name:'Что приготовить на этой неделе?'}).waitFor();

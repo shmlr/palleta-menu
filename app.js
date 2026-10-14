@@ -47,7 +47,7 @@ const Q=[
  {key:'budget',name:'Ориентир бюджета на 21 блюдо?',choices:[['До 5 000 ₽',5000],['До 8 000 ₽',8000],['До 12 000 ₽',12000],['Без ограничения',0]]},
  {key:'excl',name:'Что исключить из меню?',choices:[['Рыбу','fish'],['Молочные продукты','dairy'],['Глютенсодержащие ингредиенты','gluten'],['Яйца','eggs']],multi:true}
 ];
-function explainSource(){const latest=[...catalog.products].filter(x=>x.availability_checked_at).map(x=>Date.parse(x.availability_checked_at)).filter(Number.isFinite);const when=latest.length?new Date(Math.max(...latest)).toLocaleString('ru-RU'):'нет подтверждённых выгрузок';return when;}
+function explainSource(){const latest=[...catalog.products].filter(x=>x.sold_in_palleta!==false&&x.availability_checked_at).map(x=>Date.parse(x.availability_checked_at)).filter(Number.isFinite);const when=latest.length?new Date(Math.max(...latest)).toLocaleString('ru-RU'):'нет подтверждённых выгрузок';return when;}
 function renderHome(){
  let h='<div class="home-hero"><span class="pill">Паллета · меню для семьи</span><h1>Что приготовить на этой неделе?</h1><p class="home-lead">Подберите завтраки, обеды и ужины на 7 дней. Мы соберём продукты в один список покупок.</p><div class="home-stats"><div><b>7</b><span>дней</span></div><div><b>21</b><span>блюдо</span></div><div><b>'+recipes.length+'</b><span>рецепта</span></div></div><button class="btn" id="start-menu">Составить меню</button>';
  if(hasSavedPlan)h+='<button class="btn secondary" id="continue-menu">Продолжить сохранённое меню</button>';
@@ -88,10 +88,17 @@ function alternativesFor(slot){
 function basketText(result){
  let t=`Паллета. Заявка на проверку корзины\nКЛУБНЫЕ ЦЕНЫ: только по карте Паллеты.\n7 дней, завтрак / обед / ужин, на ${prefs.people} чел.\n`;
  for(const slot of result.slots)t+=`${C.DAYS[slot.day]} ${C.MEAL_NAMES[slot.meal]}: ${slot.recipe?slot.recipe.name:'НЕ ПОДОБРАНО'}\n`;
- t+='\nПредварительная продуктовая корзина:\n';
+ t+='\nКупить в Паллете (предварительная заявка):\n';
  for(const it of result.basket.items){const ref=refClubCost(it);
   const qty=it.p.pricing_mode==='by_weight'?`${qfmt(it.quantity)} ${it.p.unit}`:`${it.packs} уп. по ${qfmt(it.p.pack_size)} ${it.p.unit}`;
   t+=`• ${it.p.name} — ${qty}${it.p.sku_code?' [код '+it.p.sku_code+']':''}; наличие ${STATUS[it.stock]}; ${it.priceCurrent?'клубная стоимость '+money(it.cost):ref!==null?'справочная стоимость '+money(ref)+' по клубным ценам от '+humanDate(it.p.price_as_of):'клубная цена неизвестна'}\n`;
+ }
+ if(result.basket.externalItems.length){
+  t+='\nДома / купить отдельно (не для заказа в Паллете):\n';
+  for(const it of result.basket.externalItems){
+   const qty=it.p.pricing_mode==='by_weight'?qfmt(it.quantity)+' '+it.p.unit:it.packs+' уп. по '+qfmt(it.p.pack_size)+' '+it.p.unit;
+   t+='• '+it.p.name+' — '+qty+'\n';
+  }
  }
  if(result.basket.shortages.length)t+='\nНЕ ХВАТАЕТ: '+result.basket.shortages.map(x=>x.name||x.id).join(', ')+'\n';
  t+='\nПожалуйста, проверьте цены, фактические остатки, возможные замены и условия доставки. Сумма не является подтверждённым заказом.';
@@ -118,7 +125,7 @@ function renderResult(message=''){
  let h='<button class="home-link" id="home-from-result">← На главную</button><div class="bar"><span style="width:100%"></span></div><h1>Семейное меню на 7 дней</h1><p class="pill">Клубные цены по карте Паллеты</p><div class="note">Цена «Оптовая, RUB» применяется для держателей клубной карты Паллеты. Без карты цена по клубному тарифу не гарантируется. Итоговый чек подтверждается на кассе.</div>';
  h+=`<p class="muted">${prefs.people} чел. · завтрак, обед и ужин · ${p.filled} из ${p.totalSlots} блюд подобрано · ${recipes.length} редакционных рецептов</p>`;
  if(message)h+=`<div class="note">${esc(message)}</div>`;
- const inStock=catalog.products.filter(x=>C.availability(x,catalog)==='in_stock').length;
+ const inStock=catalog.products.filter(x=>x.sold_in_palleta!==false&&C.availability(x,catalog)==='in_stock').length;
  h+=`<div class="note"><b>${inStock?'Часть остатков подтверждена':'Данных 1С о текущих остатках пока нет'}.</b> Каталог автоматически подхватывается из products.json при открытии сайта. Последняя сверка: ${esc(explainSource())}. ${inStock?'Товары с устаревшими отметками показываются как неизвестные.':'Выбор предварительный: «остаток уточняется» не означает отсутствие товара в магазине.'}</div>`;
  let day=-1;
  for(const slot of p.slots){
@@ -133,7 +140,7 @@ function renderResult(message=''){
    h+='</div>';
    if((p.slots.indexOf(slot)+1)%3===0)h+='</div>';
  }
- h+='<div class="panel" id="shopping"><h2>Единая корзина на неделю</h2>';
+ h+='<div class="panel" id="shopping"><h2>Купить в Паллете</h2><p class="small">В сумму и заявку входят только товары магазина. Мясо для рецептов учитывается отдельно как продукт из дома или специализированного магазина.</p>';
  const currentConfirm=b.confirmedTotal!==null;
  h+=`<div class="value">${currentConfirm?money(b.confirmedTotal):'Полный итог пока неизвестен'}</div>`;
  h+=`<p class="muted">${currentConfirm?'Все позиции покрыты свежими остатками и клубными ценами из УТ 11. Расчёт действует при предъявлении карты; чек подтвердит магазин.':'Клубный итог пока неизвестен: нужны свежие подтверждённые цены по карте и остатки. Исторические розничные цены не учитываются.'}</p>`;
@@ -142,13 +149,13 @@ function renderResult(message=''){
  if(known.length){const estimate=known.reduce((sum,it)=>sum+refClubCost(it),0);h+=`<div class="note"><b>Справочная сумма по ${known.length} из ${b.items.length} позиций: ≈ ${money(estimate)}</b><p class="small">Только товары с известной клубной ценой на дату выгрузки. Это не полная стоимость корзины и не подтверждённый заказ.</p></div>`;}
  if(p.filled<p.totalSlots)h+=`<p class="error">${p.totalSlots-p.filled} блюд не подобрано: в каталоге нет подтверждённых подходящих сочетаний при ваших ограничениях.</p>`;
  if(prefs.budget){h+=`<p class="small">Бюджет: ${money(prefs.budget)}. ${currentConfirm?b.confirmedTotal<=prefs.budget?'Собранная корзина укладывается в бюджет по данным последней выгрузки.':'Внимание: корзина превышает выбранный бюджет.':'Проверка бюджета заблокирована неполными данными.'}</p>`;}
- h+='</div><div class="panel"><h2>Список покупок <span class="pill" id="check-count">'+b.items.filter(x=>checkedItems.has(x.p.id)).length+' / '+b.items.length+' отмечено</span></h2><p class="muted">Отмечайте купленное. Галочки сохраняются только на вашем устройстве. Значок ≈ означает ориентир по прежней клубной цене, не текущий чек.</p>';
+ h+='</div><div class="panel"><h2>Список покупок в Паллете <span class="pill" id="check-count">'+b.items.filter(x=>checkedItems.has(x.p.id)).length+' / '+b.items.length+' отмечено</span></h2><p class="muted">Отмечайте купленное. Галочки сохраняются только на вашем устройстве. Значок ≈ означает ориентир по прежней клубной цене, не текущий чек.</p>';
  for(const it of b.items){const opts=(it.ing.product_ids||[]).map(id=>catalog.byProduct[id]).filter(x=>C.validProduct(x,it.ing)&&C.availability(x,catalog)!=='out_of_stock');
  const ref=refClubCost(it);
  h+=`<div class="product"><div class="product-head"><label class="check-row"><input class="shopping-check" type="checkbox" data-check="${esc(it.p.id)}" ${checkedItems.has(it.p.id)?'checked':''} aria-label="Куплено: ${esc(it.p.name)}"><span class="basket-name">${esc(it.ing.name)}</span></label><span class="amount">${it.priceCurrent?money(it.cost):ref!==null?'≈ '+money(ref):'цену уточнить'}</span></div>`;
  const qty=it.p.pricing_mode==='by_pack'?`${it.packs} уп. по ${qfmt(it.p.pack_size)} ${esc(it.p.unit)} · всего ${qfmt(it.quantity)} ${esc(it.p.unit)}`:`${qfmt(it.quantity)} ${esc(it.p.unit)}`;
  h+=`<p class="small">${esc(it.p.name)} · ${qty} · ${esc(STATUS[it.stock])}${it.p.sku_code?' · код '+esc(it.p.sku_code):''}</p>`;
- if(it.ing.assortment_confirmed_by_owner)h+='<p class="small success">Зелень есть в ассортименте Паллеты (со слов магазина). Вид, цену и наличие уточняют при сборке.</p>';
+ if(it.ing.source_group==='Рынок 2')h+='<p class="small success">Учтена в группе «Рынок 2» УТ 11. Вид, фасовку и актуальное наличие уточнят при сборке.</p>';
  if(it.priceKnown&&!it.priceCurrent)h+=`<p class="small">Последняя известная клубная стоимость ${money(it.cost)} · не текущая цена</p>`;
  if(ref!==null&&!it.priceCurrent){h+=`<p class="small">Клубная цена на ${esc(humanDate(it.p.price_as_of))}: ${money(it.p.price)} за ${it.p.pricing_mode==='by_pack'?'упаковку':esc(it.p.unit)}. Справочно, не текущая цена.</p>`;}
  if(opts.length>1){h+=`<label class="small" for="select-${esc(it.ingredient)}">Заменить на аналог или другую фасовку</label><select id="select-${esc(it.ingredient)}" data-ingredient="${esc(it.ingredient)}">`;
@@ -157,15 +164,30 @@ function renderResult(message=''){
  }
  h+='</div>';
  }
- if(!b.items.length)h+='<p class="small">Составить корзину не удалось.</p>';
+ if(!b.items.length)h+='<p class="small">По этому меню нет товаров для покупки в Паллете.</p>';
  h+='</div>';
+ if(b.externalItems.length){
+  h+='<div class="panel" id="outside-store"><h2>Дома или купить отдельно</h2><p class="muted">Мясо пока не продаётся в Паллете. Эти продукты нужны для приготовления, но не входят в клубную стоимость и WhatsApp-заявку магазину.</p>';
+  for(const it of b.externalItems){
+   const qty=it.p.pricing_mode==='by_weight'?qfmt(it.quantity)+' '+esc(it.p.unit):it.packs+' уп. по '+qfmt(it.p.pack_size)+' '+esc(it.p.unit);
+   h+='<div class="product"><b>'+esc(it.ing.name)+'</b><p class="small">'+esc(it.p.name)+' · '+qty+'</p>';
+   const options=(it.ing.product_ids||[]).map(id=>catalog.byProduct[id]).filter(x=>C.validProduct(x,it.ing));
+   if(options.length>1){
+    h+='<label class="small" for="outside-'+esc(it.ing.id)+'">Что будете использовать</label><select id="outside-'+esc(it.ing.id)+'" data-ingredient="'+esc(it.ing.id)+'">';
+    for(const alt of options)h+='<option value="'+esc(alt.id)+'" '+(alt.id===it.p.id?'selected':'')+'>'+esc(alt.name)+'</option>';
+    h+='</select>';
+   }
+   h+='</div>';
+  }
+  h+='</div>';
+ }
  h+='<div class="panel"><h2>Какие SKU стоит проверить</h2><p class="small">Это рекомендации для сверки в 1С, а не утверждение, что товаров нет в магазине.</p>';
- const uncovered=catalog.ingredients.filter(i=>!i.assortment_confirmed_by_owner&&!(i.product_ids||[]).some(id=>{const pr=catalog.byProduct[id];return C.validProduct(pr,i)&&C.availability(pr,catalog)==='in_stock';}));
+ const uncovered=catalog.ingredients.filter(i=>i.sold_in_palleta!==false&&i.source_group!=='Рынок 2'&&!(i.product_ids||[]).some(id=>{const pr=catalog.byProduct[id];return C.validProduct(pr,i)&&C.availability(pr,catalog)==='in_stock';}));
  const important=uncovered.slice(0,10);
  for(const i of important)h+=`<div class="product"><b>${esc(i.name)}</b><div class="small">${esc(i.substitution_hint||'Проверить подходящий SKU и актуальное наличие')}</div></div>`;
  h+='<p class="small">Идеи завтраков из публичного демо berbena.pro, ещё не сопоставленные с ассортиментом: овсяные хлопья, бананы, семена чиа, кокосовое молоко. Они не включены в заказ.</p></div>';
  h+='<button class="btn" id="copy">Скопировать меню и список продуктов</button><button class="btn secondary" id="share">Поделиться списком</button><button class="btn secondary" id="print">Распечатать или сохранить PDF</button><button class="btn secondary" id="clearchecks">Снять отметки с покупок</button><button class="btn secondary" id="shuffle">Другое сочетание блюд</button><button class="btn secondary" id="restart">Изменить условия</button>';
- h+='<div class="panel wa-section"><h2>Готово! Отправьте список в Паллету</h2><p class="small">Список подготовлен из выбранных продуктов. Магазин уточнит клубные цены, наличие и возможные замены.</p><a class="btn wa-link" id="whatsapp" href="'+esc(whatsappHref(lastPlan))+'" target="_blank" rel="noopener noreferrer">Отправить список в WhatsApp ↗</a><p class="small">Получатель: +7 988 204-00-01. WhatsApp откроет готовое сообщение: проверьте его и нажмите «Отправить». Без подтверждения магазина заказ ещё не оформлен.</p></div>';
+ h+='<div class="panel wa-section"><h2>Готово! Отправьте заявку в Паллету</h2><p class="small">В заявке только товары магазина, без мяса из домашних запасов. Магазин уточнит клубные цены, наличие и возможные замены.</p><a class="btn wa-link" id="whatsapp" href="'+esc(whatsappHref(lastPlan))+'" target="_blank" rel="noopener noreferrer">Отправить список в WhatsApp ↗</a><p class="small">Получатель: +7 988 204-00-01. WhatsApp откроет готовое сообщение: проверьте его и нажмите «Отправить». Без подтверждения магазина заказ ещё не оформлен.</p></div>';
 if(prefs.time<90)h+='<p class="small">Для блюд из куриных потрохов выберите «Без ограничения» по времени: им требуется больше времени, чем куриному филе.</p>';
 h+='<p class="muted">* Соль, вода и специи для многих рецептов не включены в продуктовую корзину; порции носят редакционный характер. Аллергенная безопасность не проверена, фильтры не заменяют изучение состава товара.</p>';
  $.innerHTML=h;
@@ -196,7 +218,7 @@ function render(){if(view==='home')renderHome();else if(step<Q.length)renderQues
 async function init(){
  try{
   if(!window.fetch)throw Error('Браузер не поддерживает загрузку каталога');
-  const [p,r]=await Promise.all(['products.json','recipes.json'].map(async f=>{const ans=await fetch('./'+f+'?v=9',{cache:'no-store'});if(!ans.ok)throw Error(f+': HTTP '+ans.status);return ans.json();}));
+  const [p,r]=await Promise.all(['products.json','recipes.json'].map(async f=>{const ans=await fetch('./'+f+'?v=10',{cache:'no-store'});if(!ans.ok)throw Error(f+': HTTP '+ans.status);return ans.json();}));
   catalog=C.normalize(p);recipes=r.recipes;C.checkRecipes(recipes,catalog);if(recipes.length===0)throw Error('Нет рецептов');loadState();render();
  }catch(e){$.innerHTML=`<div class="note"><b>Не удалось загрузить каталог.</b><div class="small">${esc(e.message)}</div></div><button class="btn" id="retry">Повторить</button>`;document.getElementById('retry').onclick=init;}
 }

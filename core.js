@@ -16,7 +16,8 @@ function validProduct(p,ing){return !!p&&p.compatible_with_recipe!==false&&p.uni
 function candidateOptions(ing,c,forced,now){
  const products=c.byProduct;
  const res=(ing.product_ids||[]).map(id=>products[id]).filter(p=>validProduct(p,ing));
- return res.map((p,i)=>({p,i,status:availability(p,c,now)}))
+ // A product bought elsewhere can be used in a recipe regardless of its UT warehouse state.
+ return res.map((p,i)=>({p,i,status:(ing.sold_in_palleta===false||p.sold_in_palleta===false)?'unknown':availability(p,c,now)}))
   .filter(x=>x.status!=='out_of_stock')
   .sort((a,b)=>{
     const pa=forced===a.p.id?0:1,pb=forced===b.p.id?0:1;
@@ -48,20 +49,26 @@ function allocateIngredient(ing,needed,c,selected={},now=Date.now()){
  return {ingredient:ing.id,required:needed,alloc,short:rest>EPS?Number(rest.toFixed(5)):0,unknown:alloc.some(x=>x.stock==='unknown')};
 }
 function basket(needs,c,selected={},now=Date.now()){
- let items=[],shortages=[],unknownIngredients=[];
+ let items=[],externalItems=[],shortages=[],externalShortages=[],unknownIngredients=[];
  for(const [id,qty] of Object.entries(needs)){
   if(qty<=EPS)continue;
   const ing=c.byIngredient[id];if(!ing){shortages.push({id,qty,reason:'unknown_ingredient'});continue;}
   const a=allocateIngredient(ing,qty,c,selected,now);
-  for(const part of a.alloc)items.push({...part,ing});
-  if(a.short)shortages.push({id,qty:a.short,name:ing.name});
-  if(a.unknown)unknownIngredients.push(id);
+  for(const part of a.alloc){
+   const data={...part,ing};
+   if(ing.sold_in_palleta===false||part.p.sold_in_palleta===false){
+    externalItems.push({...data,stock:'unknown',priceKnown:false,priceCurrent:false,cost:null});
+   }else items.push(data);
+  }
+  if(a.short){const missing={id,qty:a.short,name:ing.name};(ing.sold_in_palleta===false?externalShortages:shortages).push(missing);}
+  if(a.unknown&&ing.sold_in_palleta!==false)unknownIngredients.push(id);
  }
  items.sort((a,b)=>a.ing.name.localeCompare(b.ing.name,'ru')||a.p.name.localeCompare(b.p.name,'ru'));
+ externalItems.sort((a,b)=>a.ing.name.localeCompare(b.ing.name,'ru')||a.p.name.localeCompare(b.p.name,'ru'));
  const allCurrent=items.length>0&&items.every(x=>x.priceCurrent);
  const allStock=items.length>0&&items.every(x=>x.stock==='in_stock')&&shortages.length===0;
  const allPriced=items.length>0&&items.every(x=>x.priceKnown);
- return {items,shortages,unknownIngredients,allStock,allCurrent,allPriced,
+ return {items,externalItems,shortages,externalShortages,unknownIngredients,allStock,allCurrent,allPriced,
   referenceAmount:items.reduce((s,x)=>s+(x.cost||0),0),
   totalCurrent:allCurrent&&allPriced&&shortages.length===0?items.reduce((s,x)=>s+x.cost,0):null,
   confirmedTotal:allCurrent&&allStock&&allPriced?items.reduce((s,x)=>s+x.cost,0):null};

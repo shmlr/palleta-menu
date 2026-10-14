@@ -10,6 +10,7 @@ const humanDate=d=>/^\d{4}-\d{2}-\d{2}$/.test(String(d||''))?String(d).slice(8,1
 function refClubCost(it){const p=it.p;if(!p||!['manual_club_snapshot','current_club'].includes(p.price_source)||p.price_type!=='Оптовая, RUB'||!p.price_as_of||!Number.isFinite(p.price)||p.price<0)return null;if(!Number.isFinite(it.packs)||it.packs<0||!Number.isFinite(it.quantity)||it.quantity<0)return null;return Number((p.pricing_mode==='by_pack'?p.price*it.packs:p.price*it.quantity).toFixed(2));}
 const STATUS={in_stock:'подтверждено по выгрузке',unknown:'остаток уточняется',out_of_stock:'нет по выгрузке'};
 let catalog,recipes,step=0,seed=1,fixed={},chosen={},prefs={people:4,time:60,budget:0,excl:[]},lastPlan;
+let view='home',hasSavedPlan=false;
 let checkedItems=new Set();
 const STORE_KEY='palleta-menu-v1';
 function saveState(){
@@ -19,6 +20,7 @@ function loadState(){
  try{
   const s=JSON.parse(window.localStorage?.getItem(STORE_KEY)||'null');if(!s||typeof s!=='object')return;
   if([0,1,2,3,4].includes(s.step))step=s.step;
+  hasSavedPlan=step===4;
   if(Number.isSafeInteger(s.seed)&&s.seed>0&&s.seed<1000000)seed=s.seed;
   if(s.prefs&&typeof s.prefs==='object'){
    prefs.people=[1,2,3,4,5,6].includes(s.prefs.people)?s.prefs.people:4;
@@ -45,6 +47,17 @@ const Q=[
  {key:'excl',name:'Что исключить из меню?',choices:[['Рыбу','fish'],['Молочные продукты','dairy'],['Глютенсодержащие ингредиенты','gluten'],['Яйца','eggs']],multi:true}
 ];
 function explainSource(){const latest=[...catalog.products].filter(x=>x.availability_checked_at).map(x=>Date.parse(x.availability_checked_at)).filter(Number.isFinite);const when=latest.length?new Date(Math.max(...latest)).toLocaleString('ru-RU'):'нет подтверждённых выгрузок';return when;}
+function renderHome(){
+ let h='<div class="home-hero"><span class="pill">Паллета · меню для семьи</span><h1>Что приготовить на этой неделе?</h1><p class="home-lead">Подберите завтраки, обеды и ужины на 7 дней. Мы соберём продукты в один список покупок.</p><div class="home-stats"><div><b>7</b><span>дней</span></div><div><b>21</b><span>блюдо</span></div><div><b>42</b><span>рецепта</span></div></div><button class="btn" id="start-menu">Составить меню</button>';
+ if(hasSavedPlan)h+='<button class="btn secondary" id="continue-menu">Продолжить сохранённое меню</button>';
+ else h+='<button class="btn secondary" id="demo-menu">Посмотреть пример меню</button>';
+ h+='</div><div class="panel home-about"><h2>Как это работает</h2><p><b>1.</b> Выберите количество человек, время и ограничения.</p><p><b>2.</b> Получите меню, меняйте блюда и подходящие продукты.</p><p><b>3.</b> Отмечайте продукты в списке покупок. Меню сохраняется на устройстве.</p></div><p class="muted">Клубные цены показаны справочно с датой. Наличие и итоговую сумму подтвердит магазин.</p>';
+ $.innerHTML=h;
+ document.getElementById('start-menu').onclick=()=>{step=0;seed=1;fixed={};chosen={};checkedItems.clear();hasSavedPlan=false;view='planner';render();};
+ if(hasSavedPlan)document.getElementById('continue-menu').onclick=()=>{step=4;view='planner';render();};
+ else document.getElementById('demo-menu').onclick=()=>{step=4;view='planner';render();};
+}
+function showHome(){view='home';render();if(typeof window.scrollTo==='function')window.scrollTo(0,0);}
 function renderQuestion(){
  const q=Q[step];let h=`<div class="bar"><span style="width:${step/Q.length*100}%"></span></div><h1>${esc(q.name)}</h1>`;
  if(q.key==='budget')h+='<p class="muted">Бюджет проверяется по ценам для держателей клубной карты при свежей выгрузке из УТ 11. При неполных данных это пожелание, не гарантированный предел.</p>';
@@ -54,6 +67,7 @@ function renderQuestion(){
  if(q.multi)h+='<button class="btn" id="next">Собрать 21 блюдо</button>';
  if(step===0)h+='<button class="btn secondary" id="quickstart">Сразу показать пример меню на неделю</button>';
  if(step)h+='<button class="btn secondary" id="back">Назад</button>';
+ h+='<button class="btn secondary" id="home-from-questions">На главную</button>';
  $.innerHTML=h;
  $.querySelectorAll('[data-answer]').forEach(b=>b.onclick=()=>{const value=b.dataset.answer;
   if(q.multi){if(prefs.excl.includes(value))prefs.excl=prefs.excl.filter(x=>x!==value);else prefs.excl.push(value);} else {prefs[q.key]=Number(value);step++;}
@@ -62,6 +76,7 @@ function renderQuestion(){
  if(q.multi)document.getElementById('next').onclick=()=>{step=Q.length;render()};
  if(step===0)document.getElementById('quickstart').onclick=()=>{step=Q.length;render()};
  if(step)document.getElementById('back').onclick=()=>{step--;render()};
+ document.getElementById('home-from-questions').onclick=showHome;
 }
 function renderRecipeDetails(r){return `<details><summary class="small">Как готовить и состав на порцию</summary><p class="small">${Object.entries(r.ingredients_per_person).map(([id,v])=>`${esc(catalog.byIngredient[id].name)} ${qfmt(v)} ${esc(catalog.byIngredient[id].unit)}`).join(' · ')}</p><ol>${r.steps.map(t=>`<li class="small">${esc(t)}</li>`).join('')}</ol><p class="small">${esc(r.pantry_note)}</p></details>`;}
 function alternativesFor(slot){
@@ -82,9 +97,10 @@ function basketText(result){
  return t;
 }
 function renderResult(message=''){
+ hasSavedPlan=true;
  lastPlan=C.plan(catalog,recipes,prefs,{seed,fixed,selected:chosen});
  const p=lastPlan,b=p.basket;
- let h='<div class="bar"><span style="width:100%"></span></div><h1>Семейное меню на 7 дней</h1><p class="pill">Клубные цены по карте Паллеты</p><div class="note">Цена «Оптовая, RUB» применяется для держателей клубной карты Паллеты. Без карты цена по клубному тарифу не гарантируется. Итоговый чек подтверждается на кассе.</div>';
+ let h='<button class="home-link" id="home-from-result">← На главную</button><div class="bar"><span style="width:100%"></span></div><h1>Семейное меню на 7 дней</h1><p class="pill">Клубные цены по карте Паллеты</p><div class="note">Цена «Оптовая, RUB» применяется для держателей клубной карты Паллеты. Без карты цена по клубному тарифу не гарантируется. Итоговый чек подтверждается на кассе.</div>';
  h+=`<p class="muted">${prefs.people} чел. · завтрак, обед и ужин · ${p.filled} из ${p.totalSlots} блюд подобрано · ${recipes.length} редакционных рецептов</p>`;
  if(message)h+=`<div class="note">${esc(message)}</div>`;
  const inStock=catalog.products.filter(x=>C.availability(x,catalog)==='in_stock').length;
@@ -136,6 +152,7 @@ function renderResult(message=''){
  h+='<p class="muted">* Соль, вода и специи для многих рецептов не включены в продуктовую корзину; порции носят редакционный характер. Аллергенная безопасность не проверена, фильтры не заменяют изучение состава товара.</p>';
  $.innerHTML=h;
  saveState();
+ document.getElementById('home-from-result').onclick=showHome;
  $.querySelectorAll('[data-check]').forEach(el=>el.onchange=()=>{
   if(el.checked)checkedItems.add(el.dataset.check);else checkedItems.delete(el.dataset.check);
   saveState();
@@ -157,7 +174,7 @@ function renderResult(message=''){
  document.getElementById('shuffle').onclick=()=>{seed++;fixed={};window.scrollTo(0,0);renderResult();};
  document.getElementById('restart').onclick=()=>{step=0;fixed={};chosen={};window.scrollTo(0,0);render();};
 }
-function render(){step<Q.length?renderQuestion():renderResult();saveState();}
+function render(){if(view==='home')renderHome();else if(step<Q.length)renderQuestion();else renderResult();saveState();}
 async function init(){
  try{
   if(!window.fetch)throw Error('Браузер не поддерживает загрузку каталога');

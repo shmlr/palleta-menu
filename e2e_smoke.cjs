@@ -32,7 +32,7 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 
   assert(await page.getByRole('button',{name:'Составить меню'}).isVisible());
   await page.getByRole('button',{name:'Посмотреть пример меню'}).click();
-  await page.getByRole('heading',{name:'Семейное меню на 7 дней'}).waitFor();
+  await page.getByRole('heading',{name:'Семейное меню на 3 дня'}).waitFor();
   const slots=await page.locator('.slot').count();
   assert.equal(slots,9,'default 3 days must render 9 planned meals');
   await page.locator('[data-slot="0-lunch"]').selectOption('chicken_soup');

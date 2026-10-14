@@ -6,6 +6,8 @@ if(!C){$.textContent='Ошибка загрузки расчётного мод�
 const esc=x=>String(x??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 const money=n=>Number(n).toLocaleString('ru-RU',{minimumFractionDigits:2,maximumFractionDigits:2})+' ₽';
 const qfmt=n=>Number(Number(n).toFixed(3)).toLocaleString('ru-RU');
+const humanDate=d=>/^\d{4}-\d{2}-\d{2}$/.test(String(d||''))?String(d).slice(8,10)+'.'+String(d).slice(5,7)+'.'+String(d).slice(0,4):String(d||'дата неизвестна');
+function refClubCost(it){const p=it.p;if(!p||!['manual_club_snapshot','current_club'].includes(p.price_source)||p.price_type!=='Оптовая, RUB'||!p.price_as_of||!Number.isFinite(p.price)||p.price<0)return null;if(!Number.isFinite(it.packs)||it.packs<0||!Number.isFinite(it.quantity)||it.quantity<0)return null;return Number((p.pricing_mode==='by_pack'?p.price*it.packs:p.price*it.quantity).toFixed(2));}
 const STATUS={in_stock:'подтверждено по выгрузке',unknown:'остаток уточняется',out_of_stock:'нет по выгрузке'};
 let catalog,recipes,step=0,seed=1,fixed={},chosen={},prefs={people:4,time:60,budget:0,excl:[]},lastPlan;
 let checkedItems=new Set();
@@ -71,7 +73,7 @@ function basketText(result){
  let t=`Паллета. Заявка на проверку корзины\nКЛУБНЫЕ ЦЕНЫ: только по карте Паллеты.\n7 дней, завтрак / обед / ужин, на ${prefs.people} чел.\n`;
  for(const slot of result.slots)t+=`${C.DAYS[slot.day]} ${C.MEAL_NAMES[slot.meal]}: ${slot.recipe?slot.recipe.name:'НЕ ПОДОБРАНО'}\n`;
  t+='\nПредварительная продуктовая корзина:\n';
- for(const it of result.basket.items)t+=`• ${it.p.name} — ${qfmt(it.quantity)} ${it.p.unit} (${it.packs} ед. по ${qfmt(it.p.pack_size)} ${it.p.unit})${it.p.sku_code?' [код '+it.p.sku_code+']':''}; наличие ${STATUS[it.stock]}; цена по карте ${it.priceCurrent?'по свежей выгрузке УТ':'не подтверждена'}\n`;
+ for(const it of result.basket.items){const ref=refClubCost(it);t+=`• ${it.p.name} — ${qfmt(it.quantity)} ${it.p.unit} (${it.packs} ед. по ${qfmt(it.p.pack_size)} ${it.p.unit})${it.p.sku_code?' [код '+it.p.sku_code+']':''}; наличие ${STATUS[it.stock]}; ${it.priceCurrent?'клубная стоимость '+money(it.cost):ref!==null?'справочная стоимость '+money(ref)+' по клубным ценам от '+humanDate(it.p.price_as_of):'клубная цена неизвестна'}\n`;}
  if(result.basket.shortages.length)t+='\nНЕ ХВАТАЕТ: '+result.basket.shortages.map(x=>x.name||x.id).join(', ')+'\n';
  t+='\nПожалуйста, проверьте цены, фактические остатки, возможные замены и условия доставки. Сумма не является подтверждённым заказом.';
  return t;
@@ -102,14 +104,17 @@ function renderResult(message=''){
  h+=`<div class="value">${currentConfirm?money(b.confirmedTotal):'Полный итог пока неизвестен'}</div>`;
  h+=`<p class="muted">${currentConfirm?'Все позиции покрыты свежими остатками и клубными ценами из УТ 11. Расчёт действует при предъявлении карты; чек подтвердит магазин.':'Клубный итог пока неизвестен: нужны свежие подтверждённые цены по карте и остатки. Исторические розничные цены не учитываются.'}</p>`;
  h+=`<p class="small">Позиции: ${b.items.length} · Без свежего остатка: ${b.items.filter(x=>x.stock!=='in_stock').length} · Без свежей цены: ${b.items.filter(x=>!x.priceCurrent).length} · Нехватка: ${b.shortages.length}</p>`;
+ const known=b.items.filter(it=>refClubCost(it)!==null&&!it.priceCurrent);
+ if(known.length){const estimate=known.reduce((sum,it)=>sum+refClubCost(it),0);h+=`<div class="note"><b>Справочная сумма по ${known.length} из ${b.items.length} позиций: ≈ ${money(estimate)}</b><p class="small">Только товары с известной клубной ценой на дату выгрузки. Это не полная стоимость корзины и не подтверждённый заказ.</p></div>`;}
  if(p.filled<p.totalSlots)h+=`<p class="error">${p.totalSlots-p.filled} блюд не подобрано: в каталоге нет подтверждённых подходящих сочетаний при ваших ограничениях.</p>`;
  if(prefs.budget){h+=`<p class="small">Бюджет: ${money(prefs.budget)}. ${currentConfirm?b.confirmedTotal<=prefs.budget?'Собранная корзина укладывается в бюджет по данным последней выгрузки.':'Внимание: корзина превышает выбранный бюджет.':'Проверка бюджета заблокирована неполными данными.'}</p>`;}
- h+='</div><div class="panel"><h2>Список покупок <span class="pill" id="check-count">'+b.items.filter(x=>checkedItems.has(x.p.id)).length+' / '+b.items.length+' отмечено</span></h2><p class="muted">Отмечайте купленное. Галочки сохраняются только на вашем устройстве.</p>';
+ h+='</div><div class="panel"><h2>Список покупок <span class="pill" id="check-count">'+b.items.filter(x=>checkedItems.has(x.p.id)).length+' / '+b.items.length+' отмечено</span></h2><p class="muted">Отмечайте купленное. Галочки сохраняются только на вашем устройстве. Значок ≈ означает ориентир по прежней клубной цене, не текущий чек.</p>';
  for(const it of b.items){const opts=(it.ing.product_ids||[]).map(id=>catalog.byProduct[id]).filter(x=>C.validProduct(x,it.ing)&&C.availability(x,catalog)!=='out_of_stock');
- h+=`<div class="product"><div class="product-head"><label class="check-row"><input class="shopping-check" type="checkbox" data-check="${esc(it.p.id)}" ${checkedItems.has(it.p.id)?'checked':''} aria-label="Куплено: ${esc(it.p.name)}"><span class="basket-name">${esc(it.ing.name)}</span></label><span class="amount">${it.priceCurrent?money(it.cost):'цену уточнить'}</span></div>`;
+ const ref=refClubCost(it);
+ h+=`<div class="product"><div class="product-head"><label class="check-row"><input class="shopping-check" type="checkbox" data-check="${esc(it.p.id)}" ${checkedItems.has(it.p.id)?'checked':''} aria-label="Куплено: ${esc(it.p.name)}"><span class="basket-name">${esc(it.ing.name)}</span></label><span class="amount">${it.priceCurrent?money(it.cost):ref!==null?'≈ '+money(ref):'цену уточнить'}</span></div>`;
  h+=`<p class="small">${esc(it.p.name)} · ${it.packs} ${it.p.pricing_mode==='by_pack'?'уп.':'вес. позиции'} · ${qfmt(it.quantity)} ${esc(it.p.unit)} · ${esc(STATUS[it.stock])}${it.p.sku_code?' · код '+esc(it.p.sku_code):''}</p>`;
  if(it.priceKnown&&!it.priceCurrent)h+=`<p class="small">Последняя известная клубная стоимость ${money(it.cost)} · не текущая цена</p>`;
- if(it.p.price_source==='manual_club_snapshot'&&Number.isFinite(it.p.price)){h+=`<p class="small">Клубная цена на ${esc(it.p.price_as_of)}: ${money(it.p.price)} за ${it.p.pricing_mode==='by_pack'?'упаковку':esc(it.p.unit)}. Справочно, не текущая цена.</p>`;}
+ if(ref!==null&&!it.priceCurrent){h+=`<p class="small">Клубная цена на ${esc(humanDate(it.p.price_as_of))}: ${money(it.p.price)} за ${it.p.pricing_mode==='by_pack'?'упаковку':esc(it.p.unit)}. Справочно, не текущая цена.</p>`;}
  if(opts.length>1){h+=`<label class="small" for="select-${esc(it.ingredient)}">Другая фасовка или марка</label><select id="select-${esc(it.ingredient)}" data-ingredient="${esc(it.ingredient)}">`;
  for(const op of opts)h+=`<option value="${esc(op.id)}" ${op.id===it.p.id?'selected':''}>${esc(op.name)} · ${esc(STATUS[C.availability(op,catalog)])}</option>`;
  h+='</select>';
@@ -152,7 +157,7 @@ function render(){step<Q.length?renderQuestion():renderResult();saveState();}
 async function init(){
  try{
   if(!window.fetch)throw Error('Браузер не поддерживает загрузку каталога');
-  const [p,r]=await Promise.all(['products.json','recipes.json'].map(async f=>{const ans=await fetch('./'+f+'?v=4',{cache:'no-store'});if(!ans.ok)throw Error(f+': HTTP '+ans.status);return ans.json();}));
+  const [p,r]=await Promise.all(['products.json','recipes.json'].map(async f=>{const ans=await fetch('./'+f+'?v=5',{cache:'no-store'});if(!ans.ok)throw Error(f+': HTTP '+ans.status);return ans.json();}));
   catalog=C.normalize(p);recipes=r.recipes;C.checkRecipes(recipes,catalog);if(recipes.length===0)throw Error('Нет рецептов');loadState();render();
  }catch(e){$.innerHTML=`<div class="note"><b>Не удалось загрузить каталог.</b><div class="small">${esc(e.message)}</div></div><button class="btn" id="retry">Повторить</button>`;document.getElementById('retry').onclick=init;}
 }

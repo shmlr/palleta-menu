@@ -1,38 +1,56 @@
-name: Deploy Palleta menu to GitHub Pages
+name: Verify published Palleta GitHub Pages
 on:
   push:
     branches: [main]
   workflow_dispatch:
 permissions:
   contents: read
-  pages: write
-  id-token: write
 concurrency:
-  group: pages
+  group: palleta-live-smoke
   cancel-in-progress: true
 jobs:
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: .
-      - id: deployment
-        uses: actions/deploy-pages@v4
   live-smoke:
-    name: Smoke test published web app in Chrome
-    needs: deploy
+    name: Verify latest deployed files in Chrome
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+      - name: Wait for native branch-based GitHub Pages deployment
+        env:
+          COMMIT: ${{ github.sha }}
+        run: |
+          python3 - <<'PY'
+          from hashlib import sha256
+          from pathlib import Path
+          import os
+          import time
+          import urllib.request
+          base="https://shmlr.github.io/palleta-menu/"
+          paths=["start.html","index.html","app.js","core.js","products.json"]
+          expected={p:sha256(Path(p).read_bytes()).hexdigest() for p in paths}
+          for attempt in range(1,49):
+              changed=[]
+              for p in paths:
+                  try:
+                      req=urllib.request.Request(base+p+"?revision="+os.environ["COMMIT"],headers={"Cache-Control":"no-cache","User-Agent":"Palleta-release-verify/1"})
+                      with urllib.request.urlopen(req,timeout=15) as response:
+                          actual=sha256(response.read()).hexdigest()
+                      if actual!=expected[p]:
+                          changed.append(p)
+                  except Exception as exc:
+                      changed.append(p+" ("+type(exc).__name__+")")
+              if not changed:
+                  print("PASS: all five published assets match commit",os.environ["COMMIT"],flush=True)
+                  break
+              if attempt==48:
+                  raise SystemExit("STOP: published content does not match commit; changed: "+",".join(changed))
+              if attempt%4==1:
+                  print("Waiting for Pages native deployment; differences:",",".join(changed),flush=True)
+              time.sleep(15)
+          PY
       - name: Install Chromium driver
         run: npm install --no-save --ignore-scripts playwright-core@1.56.1
-      - name: Test real published GitHub Pages application
+      - name: Verify live visitor experience
         env:
           TEST_URL: https://shmlr.github.io/palleta-menu/
           CHROME_BIN: /usr/bin/google-chrome

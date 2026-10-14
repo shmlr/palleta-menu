@@ -29,6 +29,14 @@ class MinMaxEveningTests(unittest.TestCase):
         self.xls=root/("Отчет_Паллета 1С - Меню_"+CAP+".xls")
         self.mapping=json.loads(self.allow.read_text(encoding="utf-8"))["approved"]
         self.source_catalog=json.loads(self.cat.read_text(encoding="utf-8"))
+        # The public catalog now has the 20:52 dated price snapshot. Tests
+        # simulate the preceding 15:20 revision to validate a NEW email.
+        ids={a["id"] for a in self.mapping}
+        for product in self.source_catalog["products"]:
+            if product["id"] in ids:
+                product["price_snapshot_time"]="2026-10-14T15:20:11+03:00"
+                product["price_as_of"]="2026-10-14"
+        self.cat.write_text(json.dumps(self.source_catalog,ensure_ascii=False),encoding="utf-8")
         self.synthetic()
 
     def synthetic(self,overrides=None,omit=None,extra_rows=0):

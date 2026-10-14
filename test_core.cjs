@@ -31,9 +31,16 @@ const eggs=onePack.products.find(p=>p.id==='eggs_co_10');eggs.stock_quantity=1;
 c=check(onePack);r=C.plan(c,rs,prefs,{now});const eg=r.basket.items.filter(x=>x.p.id==='eggs_co_10');assert((eg[0]?.packs||0)<=1);assert(!r.basket.shortages.length);
 console.log('PASS: weekly sum never exceeds 1 egg package in stock');
 const mix=clone();const egg=mix.products.find(p=>p.id==='eggs_co_10');egg.availability='in_stock';egg.availability_checked_at=stamp;egg.stock_quantity=1;
+const tray=mix.products.find(p=>p.id==='eggs_s1_30');tray.availability='out_of_stock';tray.availability_checked_at=stamp;tray.stock_quantity=0;
 c=check(mix);const alloc=C.allocateIngredient(c.byIngredient.eggs,12,c,{},now);assert.strictEqual(alloc.alloc.length,1);assert.strictEqual(alloc.alloc[0].packs,1);assert(alloc.short>0);
 console.log('PASS: packing math and shortage detection for 12 eggs / 10 eggs available');
 // Incompatible grams of Vkusnoteevo must never be used as a liter substitute.
 let milk=c.byIngredient.milk;const candidates=milk.product_ids.map(id=>c.byProduct[id]).filter(p=>C.validProduct(p,milk));assert.strictEqual(candidates.length,1);assert.strictEqual(candidates[0].id,'darman_milk_1l');
 console.log('PASS: mass-to-volume substitution blocked');
 console.log('ALL CORE TESTS PASS');
+const trayCheck=clone(),tray30=trayCheck.products.find(p=>p.id==='eggs_s1_30');assert(tray30&&tray30.pack_size===30&&tray30.pricing_mode==='by_pack');
+const c30=check(trayCheck),pick30=C.allocateIngredient(c30.byIngredient.eggs,23,c30,{},now);assert.strictEqual(pick30.alloc[0].p.id,'eggs_s1_30');assert.strictEqual(pick30.alloc[0].packs,1);assert.strictEqual(pick30.alloc[0].quantity,30);
+assert(c30.byIngredient.rice.product_ids.includes('shams_rice_900'));
+assert(c30.byIngredient.flour.product_ids.includes('snezhana_flour_2000'));
+assert.strictEqual(trayCheck.products.filter(p=>p.sku_code).length,2);
+console.log('PASS: 30-egg tray default, suitable known alternatives and live code whitelist unchanged');

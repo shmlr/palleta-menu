@@ -131,7 +131,7 @@ function renderResult(message=''){
  hasSavedPlan=true;
  lastPlan=C.plan(catalog,recipes,prefs,{seed,fixed,selected:chosen,atHome:[...homeIngredients]});
  const p=lastPlan,b=p.basket;
- let h='<button class="home-link" id="home-from-result">← На главную</button><div class="bar"><span style="width:100%"></span></div><h1>Семейное меню на ${prefs.days} ${prefs.days===3?'дня':'дней'}</h1><p class="pill">Клубные цены по карте Паллеты</p><div class="note">Цена «Оптовая, RUB» применяется для держателей клубной карты Паллеты. Без карты цена по клубному тарифу не гарантируется. Итоговый чек подтверждается на кассе.</div>';
+ let h='<button class="home-link" id="home-from-result">← На главную</button><div class="bar"><span style="width:100%"></span></div><h1>Семейное меню на '+prefs.days+' '+(prefs.days===3?'дня':'дней')+'</h1><p class="pill">Клубные цены по карте Паллеты</p><div class="note">Цена «Оптовая, RUB» применяется для держателей клубной карты Паллеты. Без карты цена по клубному тарифу не гарантируется. Итоговый чек подтверждается на кассе.</div>';
  h+=`<p class="muted">${prefs.people} чел. · завтрак, обед и ужин · ${p.filled} из ${p.totalSlots} блюд подобрано · ${recipes.length} редакционных рецептов</p>`;
  if(message)h+=`<div class="note">${esc(message)}</div>`;
  const inStock=catalog.products.filter(x=>x.sold_in_palleta!==false&&C.availability(x,catalog)==='in_stock').length;

@@ -48,11 +48,19 @@ function allocateIngredient(ing,needed,c,selected={},now=Date.now()){
  }
  return {ingredient:ing.id,required:needed,alloc,short:rest>EPS?Number(rest.toFixed(5)):0,unknown:alloc.some(x=>x.stock==='unknown')};
 }
-function basket(needs,c,selected={},now=Date.now()){
- let items=[],externalItems=[],shortages=[],externalShortages=[],unknownIngredients=[];
+function basket(needs,c,selected={},now=Date.now(),homeIngredients=[]){
+ const home=new Set(Array.isArray(homeIngredients)?homeIngredients:homeIngredients instanceof Set?[...homeIngredients]:[]);
+ let items=[],externalItems=[],homeItems=[],shortages=[],externalShortages=[],unknownIngredients=[];
  for(const [id,qty] of Object.entries(needs)){
   if(qty<=EPS)continue;
   const ing=c.byIngredient[id];if(!ing){shortages.push({id,qty,reason:'unknown_ingredient'});continue;}
+  // A product already at home is available for cooking, but never ordered or priced.
+  if(home.has(id)){
+   const options=(ing.product_ids||[]).map(pid=>c.byProduct[pid]).filter(p=>validProduct(p,ing));
+   const product=options.find(p=>p.id===selected[id])||options[0]||null;
+   homeItems.push({ingredient:id,ing,p:product,quantity:Number(qty.toFixed(5))});
+   continue;
+  }
   const a=allocateIngredient(ing,qty,c,selected,now);
   for(const part of a.alloc){
    const data={...part,ing};
@@ -65,10 +73,11 @@ function basket(needs,c,selected={},now=Date.now()){
  }
  items.sort((a,b)=>a.ing.name.localeCompare(b.ing.name,'ru')||a.p.name.localeCompare(b.p.name,'ru'));
  externalItems.sort((a,b)=>a.ing.name.localeCompare(b.ing.name,'ru')||a.p.name.localeCompare(b.p.name,'ru'));
+ homeItems.sort((a,b)=>a.ing.name.localeCompare(b.ing.name,'ru'));
  const allCurrent=items.length>0&&items.every(x=>x.priceCurrent);
  const allStock=items.length>0&&items.every(x=>x.stock==='in_stock')&&shortages.length===0;
  const allPriced=items.length>0&&items.every(x=>x.priceKnown);
- return {items,externalItems,shortages,externalShortages,unknownIngredients,allStock,allCurrent,allPriced,
+ return {items,externalItems,homeItems,shortages,externalShortages,unknownIngredients,allStock,allCurrent,allPriced,
   referenceAmount:items.reduce((s,x)=>s+(x.cost||0),0),
   totalCurrent:allCurrent&&allPriced&&shortages.length===0?items.reduce((s,x)=>s+x.cost,0):null,
   confirmedTotal:allCurrent&&allStock&&allPriced?items.reduce((s,x)=>s+x.cost,0):null};
@@ -78,13 +87,14 @@ function hash(s){let x=2166136261;for(let i=0;i<s.length;i++){x^=s.charCodeAt(i)
 function plan(c,recipes,preferences,opts={}){
  const now=opts.now??Date.now();const fixed=opts.fixed||{},seed=opts.seed||1;
  const meals=opts.meals||MEALS,slots=[],picked=[],use={},people=preferences.people||1;
- for(let day=0;day<7;day++)for(const meal of meals){
+ const days=preferences.days===3?3:7;
+ for(let day=0;day<days;day++)for(const meal of meals){
   const key=day+'-'+meal;
   const slot={key,day,meal,recipe:null,reason:''};
   const eligible=recipes.filter(r=>r.meal===meal&&r.minutes<=(preferences.time||999)&&!r.tags.some(t=>(preferences.excl||[]).includes(t)));
   if(!eligible.length){slot.reason='Нет рецептов по ограничениям';slots.push(slot);continue;}
   const ranked=eligible.map(r=>{
-    const trial=basket(aggregate([...picked,r],people),c,opts.selected||{},now);
+    const trial=basket(aggregate([...picked,r],people),c,opts.selected||{},now,opts.atHome||[]);
     let delta=trial.unknownIngredients.length;
     const repeat=(use[r.id]||0)*15;
     const recent=picked.slice(-3).filter(x=>x&&x.id===r.id).length*25;
@@ -95,8 +105,8 @@ function plan(c,recipes,preferences,opts={}){
   else slot.reason=fixed[key]?'Выбранное блюдо не обеспечено запасами':'Нет блюд из доступных товаров';
   slots.push(slot);
  }
- const b=basket(aggregate(picked,people),c,opts.selected||{},now);
- return {slots,basket:b,filled:slots.filter(x=>x.recipe).length,totalSlots:slots.length,used:use};
+ const b=basket(aggregate(picked,people),c,opts.selected||{},now,opts.atHome||[]);
+ return {slots,basket:b,days,filled:slots.filter(x=>x.recipe).length,totalSlots:slots.length,used:use};
 }
 function normalize(c){
  if(!Array.isArray(c.products)||!Array.isArray(c.ingredients))throw Error('Некорректный products.json');

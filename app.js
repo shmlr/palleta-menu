@@ -9,21 +9,24 @@ const qfmt=n=>Number(Number(n).toFixed(3)).toLocaleString('ru-RU');
 const humanDate=d=>/^\d{4}-\d{2}-\d{2}$/.test(String(d||''))?String(d).slice(8,10)+'.'+String(d).slice(5,7)+'.'+String(d).slice(0,4):String(d||'дата неизвестна');
 function refClubCost(it){const p=it.p;if(!p||!['manual_club_snapshot','current_club'].includes(p.price_source)||p.price_type!=='Оптовая, RUB'||!p.price_as_of||!Number.isFinite(p.price)||p.price<0)return null;if(!Number.isFinite(it.packs)||it.packs<0||!Number.isFinite(it.quantity)||it.quantity<0)return null;return Number((p.pricing_mode==='by_pack'?p.price*it.packs:p.price*it.quantity).toFixed(2));}
 const STATUS={in_stock:'подтверждено по выгрузке',unknown:'остаток уточняется',out_of_stock:'нет по выгрузке'};
-let catalog,recipes,step=0,seed=1,fixed={},chosen={},prefs={people:4,time:60,budget:0,excl:[]},lastPlan;
+let catalog,recipes,step=0,seed=1,fixed={},chosen={},prefs={days:3,people:4,time:60,budget:0,excl:[]},lastPlan;
 let view='home',hasSavedPlan=false;
-let checkedItems=new Set();
+let checkedItems=new Set(),homeIngredients=new Set();
 const STORE_KEY='palleta-menu-v1';
 const WHATSAPP_NUMBER='79882040001';
 function saveState(){
- try{if(!window.localStorage)return;window.localStorage.setItem(STORE_KEY,JSON.stringify({step,seed,prefs,fixed,chosen,checked:[...checkedItems]}));}catch(e){}
+ try{if(!window.localStorage)return;window.localStorage.setItem(STORE_KEY,JSON.stringify({version:2,step,seed,prefs,fixed,chosen,checked:[...checkedItems],home:[...homeIngredients]}));}catch(e){}
 }
 function loadState(){
  try{
   const s=JSON.parse(window.localStorage?.getItem(STORE_KEY)||'null');if(!s||typeof s!=='object')return;
-  if([0,1,2,3,4].includes(s.step))step=s.step;
-  hasSavedPlan=step===4;
+  const old=s.version!==2;
+  if(Number.isInteger(s.step)&&s.step>=0&&s.step<=(old?4:Q.length))
+   step=old?(s.step===4?Q.length:s.step+1):s.step;
+  hasSavedPlan=step===Q.length;
   if(Number.isSafeInteger(s.seed)&&s.seed>0&&s.seed<1000000)seed=s.seed;
   if(s.prefs&&typeof s.prefs==='object'){
+   prefs.days=old?7:([3,7].includes(s.prefs.days)?s.prefs.days:3);
    prefs.people=[1,2,3,4,5,6].includes(s.prefs.people)?s.prefs.people:4;
    prefs.time=[30,45,60,999].includes(s.prefs.time)?s.prefs.time:60;
    prefs.budget=[0,5000,8000,12000].includes(s.prefs.budget)?s.prefs.budget:0;
@@ -38,10 +41,12 @@ function loadState(){
   }
   const valid=new Set(catalog.products.map(p=>p.id));
   if(Array.isArray(s.checked))checkedItems=new Set(s.checked.filter(x=>valid.has(x)));
+  if(Array.isArray(s.home))homeIngredients=new Set(s.home.filter(id=>catalog.byIngredient[id]&&catalog.byIngredient[id].sold_in_palleta!==false));
  }catch(e){}
 }
 
 const Q=[
+ {key:'days',name:'На сколько дней составить меню?',choices:[['3 дня',3],['7 дней',7]],cols:true},
  {key:'people',name:'На сколько человек готовим?',choices:[['1',1],['2',2],['3',3],['4',4],['5',5],['6',6]],cols:true},
  {key:'time',name:'Максимальное время на одно блюдо?',choices:[['До 30 минут',30],['До 45 минут',45],['До 60 минут',60],['Без ограничения',999]]},
  {key:'budget',name:'Ориентир бюджета на 21 блюдо?',choices:[['До 5 000 ₽',5000],['До 8 000 ₽',8000],['До 12 000 ₽',12000],['Без ограничения',0]]},
@@ -49,14 +54,14 @@ const Q=[
 ];
 function explainSource(){const latest=[...catalog.products].filter(x=>x.sold_in_palleta!==false&&x.availability_checked_at).map(x=>Date.parse(x.availability_checked_at)).filter(Number.isFinite);const when=latest.length?new Date(Math.max(...latest)).toLocaleString('ru-RU'):'нет подтверждённых выгрузок';return when;}
 function renderHome(){
- let h='<div class="home-hero"><span class="pill">Паллета · меню для семьи</span><h1>Что приготовить на этой неделе?</h1><p class="home-lead">Подберите завтраки, обеды и ужины на 7 дней. Мы соберём продукты в один список покупок.</p><div class="home-stats"><div><b>7</b><span>дней</span></div><div><b>21</b><span>блюдо</span></div><div><b>'+recipes.length+'</b><span>рецепта</span></div></div><button class="btn" id="start-menu">Составить меню</button>';
+ let h='<div class="home-hero"><span class="pill">Паллета · меню для семьи</span><h1>Что приготовить на этой неделе?</h1><p class="home-lead">Подберите завтраки, обеды и ужины на 3 или 7 дней. Мы соберём продукты в один список покупок.</p><div class="home-stats"><div><b>3 или 7</b><span>дней</span></div><div><b>9 или 21</b><span>блюдо</span></div><div><b>'+recipes.length+'</b><span>рецепта</span></div></div><button class="btn" id="start-menu">Составить меню</button>';
  if(hasSavedPlan)h+='<button class="btn secondary" id="continue-menu">Продолжить сохранённое меню</button>';
  else h+='<button class="btn secondary" id="demo-menu">Посмотреть пример меню</button>';
- h+='</div><div class="panel home-about"><h2>Как это работает</h2><p><b>1.</b> Выберите количество человек, время и ограничения.</p><p><b>2.</b> Получите меню, меняйте блюда и подходящие продукты.</p><p><b>3.</b> Отмечайте продукты в списке покупок. Меню сохраняется на устройстве.</p></div><p class="muted">Клубные цены показаны справочно с датой. Наличие и итоговую сумму подтвердит магазин.</p>';
+ h+='</div><div class="panel home-about"><h2>Как это работает</h2><p><b>1.</b> Выберите количество человек, время и ограничения.</p><p><b>2.</b> Получите меню, меняйте блюда и подходящие продукты.</p><p><b>3.</b> Отметьте, что уже есть дома, и отправьте оставшуюся корзину в Паллету.</p></div><p class="muted">Клубные цены показаны справочно с датой. Наличие и итоговую сумму подтвердит магазин.</p>';
  $.innerHTML=h;
- document.getElementById('start-menu').onclick=()=>{step=0;seed=1;fixed={};chosen={};checkedItems.clear();hasSavedPlan=false;view='planner';render();};
- if(hasSavedPlan)document.getElementById('continue-menu').onclick=()=>{step=4;view='planner';render();};
- else document.getElementById('demo-menu').onclick=()=>{step=4;view='planner';render();};
+ document.getElementById('start-menu').onclick=()=>{step=0;seed=1;fixed={};chosen={};checkedItems.clear();homeIngredients.clear();prefs.days=3;hasSavedPlan=false;view='planner';render();};
+ if(hasSavedPlan)document.getElementById('continue-menu').onclick=()=>{step=Q.length;view='planner';render();};
+ else document.getElementById('demo-menu').onclick=()=>{step=Q.length;view='planner';render();};
 }
 function showHome(){view='home';render();if(typeof window.scrollTo==='function')window.scrollTo(0,0);}
 function renderQuestion(){
@@ -65,8 +70,8 @@ function renderQuestion(){
  h+=`<div class="choices${q.cols?' cols':''}">`;
  for(const [label,val] of q.choices){const marked=q.multi?prefs.excl.includes(val):prefs[q.key]===val;h+=`<button class="choice${marked?' selected':''}" data-answer="${esc(val)}" aria-pressed="${marked?'true':'false'}">${esc(label)}</button>`;}
  h+='</div>';
- if(q.multi)h+='<button class="btn" id="next">Собрать 21 блюдо</button>';
- if(step===0)h+='<button class="btn secondary" id="quickstart">Сразу показать пример меню на неделю</button>';
+ if(q.multi)h+='<button class="btn" id="next">Собрать '+(prefs.days*3)+' блюд</button>';
+ if(step===0)h+='<button class="btn secondary" id="quickstart">Сразу показать пример на 3 дня</button>';
  if(step)h+='<button class="btn secondary" id="back">Назад</button>';
  h+='<button class="btn secondary" id="home-from-questions">На главную</button>';
  $.innerHTML=h;
@@ -86,12 +91,16 @@ function alternativesFor(slot){
  return recipesForMeal.filter(r=>r.id!==slot.recipe?.id).sort((a,b)=>a.name.localeCompare(b.name,'ru'));
 }
 function basketText(result){
- let t=`Паллета. Заявка на проверку корзины\nКЛУБНЫЕ ЦЕНЫ: только по карте Паллеты.\n7 дней, завтрак / обед / ужин, на ${prefs.people} чел.\n`;
+ let t=`Паллета. Заявка на проверку корзины\nКЛУБНЫЕ ЦЕНЫ: только по карте Паллеты.\n${prefs.days===3?'3 дня':'7 дней'}, завтрак / обед / ужин, на ${prefs.people} чел.\n`;
  for(const slot of result.slots)t+=`${C.DAYS[slot.day]} ${C.MEAL_NAMES[slot.meal]}: ${slot.recipe?slot.recipe.name:'НЕ ПОДОБРАНО'}\n`;
  t+='\nКупить в Паллете (предварительная заявка):\n';
  for(const it of result.basket.items){const ref=refClubCost(it);
   const qty=it.p.pricing_mode==='by_weight'?`${qfmt(it.quantity)} ${it.p.unit}`:`${it.packs} уп. по ${qfmt(it.p.pack_size)} ${it.p.unit}`;
   t+=`• ${it.p.name} — ${qty}${it.p.sku_code?' [код '+it.p.sku_code+']':''}; наличие ${STATUS[it.stock]}; ${it.priceCurrent?'клубная стоимость '+money(it.cost):ref!==null?'справочная стоимость '+money(ref)+' по клубным ценам от '+humanDate(it.p.price_as_of):'клубная цена неизвестна'}\n`;
+ }
+ if(result.basket.homeItems.length){
+  t+='\nУже есть дома (не заказывать в Паллете):\n';
+  for(const it of result.basket.homeItems)t+='• '+it.ing.name+' — '+qfmt(it.quantity)+' '+it.ing.unit+'\n';
  }
  if(result.basket.externalItems.length){
   t+='\nДома / купить отдельно (не для заказа в Паллете):\n';
@@ -106,7 +115,7 @@ function basketText(result){
 }
 function whatsappOrderText(result){
  const lines=['Здравствуйте! Прошу проверить наличие и собрать продукты в «Паллете» по меню на неделю.',
-  'На '+prefs.people+' чел. · '+result.filled+' из '+result.totalSlots+' блюд.',
+  'На '+prefs.people+' чел. · '+prefs.days+' дн. · '+result.filled+' из '+result.totalSlots+' блюд.',
   'Список покупок:'];
  for(const it of result.basket.items){
   const quantity=it.p.pricing_mode==='by_weight'?qfmt(it.quantity)+' '+it.p.unit:it.packs+' уп. по '+qfmt(it.p.pack_size)+' '+it.p.unit;
@@ -120,9 +129,9 @@ function whatsappOrderText(result){
 function whatsappHref(result){return 'https://wa.me/'+WHATSAPP_NUMBER+'?text='+encodeURIComponent(whatsappOrderText(result));}
 function renderResult(message=''){
  hasSavedPlan=true;
- lastPlan=C.plan(catalog,recipes,prefs,{seed,fixed,selected:chosen});
+ lastPlan=C.plan(catalog,recipes,prefs,{seed,fixed,selected:chosen,atHome:[...homeIngredients]});
  const p=lastPlan,b=p.basket;
- let h='<button class="home-link" id="home-from-result">← На главную</button><div class="bar"><span style="width:100%"></span></div><h1>Семейное меню на 7 дней</h1><p class="pill">Клубные цены по карте Паллеты</p><div class="note">Цена «Оптовая, RUB» применяется для держателей клубной карты Паллеты. Без карты цена по клубному тарифу не гарантируется. Итоговый чек подтверждается на кассе.</div>';
+ let h='<button class="home-link" id="home-from-result">← На главную</button><div class="bar"><span style="width:100%"></span></div><h1>Семейное меню на ${prefs.days} ${prefs.days===3?'дня':'дней'}</h1><p class="pill">Клубные цены по карте Паллеты</p><div class="note">Цена «Оптовая, RUB» применяется для держателей клубной карты Паллеты. Без карты цена по клубному тарифу не гарантируется. Итоговый чек подтверждается на кассе.</div>';
  h+=`<p class="muted">${prefs.people} чел. · завтрак, обед и ужин · ${p.filled} из ${p.totalSlots} блюд подобрано · ${recipes.length} редакционных рецептов</p>`;
  if(message)h+=`<div class="note">${esc(message)}</div>`;
  const inStock=catalog.products.filter(x=>x.sold_in_palleta!==false&&C.availability(x,catalog)==='in_stock').length;
@@ -140,7 +149,7 @@ function renderResult(message=''){
    h+='</div>';
    if((p.slots.indexOf(slot)+1)%3===0)h+='</div>';
  }
- h+='<div class="panel" id="shopping"><h2>Купить в Паллете</h2><p class="small">В сумму и заявку входят только товары магазина. Мясо для рецептов учитывается отдельно как продукт из дома или специализированного магазина.</p>';
+ h+='<div class="panel" id="shopping"><h2>Купить в Паллете</h2><p class="small">В сумму и заявку входят только товары Паллеты, которых нет дома. Мясо учитывается отдельно.</p>';
  const currentConfirm=b.confirmedTotal!==null;
  h+=`<div class="value">${currentConfirm?money(b.confirmedTotal):'Полный итог пока неизвестен'}</div>`;
  h+=`<p class="muted">${currentConfirm?'Все позиции покрыты свежими остатками и клубными ценами из УТ 11. Расчёт действует при предъявлении карты; чек подтвердит магазин.':'Клубный итог пока неизвестен: нужны свежие подтверждённые цены по карте и остатки. Исторические розничные цены не учитываются.'}</p>`;
@@ -149,12 +158,13 @@ function renderResult(message=''){
  if(known.length){const estimate=known.reduce((sum,it)=>sum+refClubCost(it),0);h+=`<div class="note"><b>Справочная сумма по ${known.length} из ${b.items.length} позиций: ≈ ${money(estimate)}</b><p class="small">Только товары с известной клубной ценой на дату выгрузки. Это не полная стоимость корзины и не подтверждённый заказ.</p></div>`;}
  if(p.filled<p.totalSlots)h+=`<p class="error">${p.totalSlots-p.filled} блюд не подобрано: в каталоге нет подтверждённых подходящих сочетаний при ваших ограничениях.</p>`;
  if(prefs.budget){h+=`<p class="small">Бюджет: ${money(prefs.budget)}. ${currentConfirm?b.confirmedTotal<=prefs.budget?'Собранная корзина укладывается в бюджет по данным последней выгрузки.':'Внимание: корзина превышает выбранный бюджет.':'Проверка бюджета заблокирована неполными данными.'}</p>`;}
- h+='</div><div class="panel"><h2>Список покупок в Паллете <span class="pill" id="check-count">'+b.items.filter(x=>checkedItems.has(x.p.id)).length+' / '+b.items.length+' отмечено</span></h2><p class="muted">Отмечайте купленное. Галочки сохраняются только на вашем устройстве. Значок ≈ означает ориентир по прежней клубной цене, не текущий чек.</p>';
+ h+='</div><div class="panel"><h2>Список покупок в Паллете <span class="pill" id="check-count">'+b.items.filter(x=>checkedItems.has(x.p.id)).length+' / '+b.items.length+' отмечено</span></h2><p class="muted">Отмечайте купленное. Галочки сохраняются на устройстве. Нажмите «Уже есть дома», чтобы убрать продукт из заявки. Значок ≈ — справочная цена.</p>';
  for(const it of b.items){const opts=(it.ing.product_ids||[]).map(id=>catalog.byProduct[id]).filter(x=>C.validProduct(x,it.ing)&&C.availability(x,catalog)!=='out_of_stock');
  const ref=refClubCost(it);
  h+=`<div class="product"><div class="product-head"><label class="check-row"><input class="shopping-check" type="checkbox" data-check="${esc(it.p.id)}" ${checkedItems.has(it.p.id)?'checked':''} aria-label="Куплено: ${esc(it.p.name)}"><span class="basket-name">${esc(it.ing.name)}</span></label><span class="amount">${it.priceCurrent?money(it.cost):ref!==null?'≈ '+money(ref):'цену уточнить'}</span></div>`;
  const qty=it.p.pricing_mode==='by_pack'?`${it.packs} уп. по ${qfmt(it.p.pack_size)} ${esc(it.p.unit)} · всего ${qfmt(it.quantity)} ${esc(it.p.unit)}`:`${qfmt(it.quantity)} ${esc(it.p.unit)}`;
  h+=`<p class="small">${esc(it.p.name)} · ${qty} · ${esc(STATUS[it.stock])}${it.p.sku_code?' · код '+esc(it.p.sku_code):''}</p>`;
+ h+=`<label class="small home-checkbox"><input type="checkbox" data-home="${esc(it.ing.id)}"> Уже есть дома — убрать из заявки</label>`;
  if(it.ing.source_group==='Рынок 2')h+='<p class="small success">Учтена в группе «Рынок 2» УТ 11. Вид, фасовку и актуальное наличие уточнят при сборке.</p>';
  if(it.priceKnown&&!it.priceCurrent)h+=`<p class="small">Последняя известная клубная стоимость ${money(it.cost)} · не текущая цена</p>`;
  if(ref!==null&&!it.priceCurrent){h+=`<p class="small">Клубная цена на ${esc(humanDate(it.p.price_as_of))}: ${money(it.p.price)} за ${it.p.pricing_mode==='by_pack'?'упаковку':esc(it.p.unit)}. Справочно, не текущая цена.</p>`;}
@@ -166,6 +176,11 @@ function renderResult(message=''){
  }
  if(!b.items.length)h+='<p class="small">По этому меню нет товаров для покупки в Паллете.</p>';
  h+='</div>';
+ if(b.homeItems.length){
+  h+='<div class="panel" id="at-home"><h2>Уже есть дома</h2><p class="small">Продукты остаются в рецептах, но не входят в заявку и стоимость. Снимите галочку, чтобы вернуть в покупки.</p>';
+  for(const it of b.homeItems)h+='<div class="product"><label class="home-checkbox"><input type="checkbox" data-home="'+esc(it.ingredient)+'" checked> '+esc(it.ing.name)+'</label><p class="small">Нужно для меню: '+qfmt(it.quantity)+' '+esc(it.ing.unit)+'</p></div>';
+  h+='</div>';
+ }
  if(b.externalItems.length){
   h+='<div class="panel" id="outside-store"><h2>Дома или купить отдельно</h2><p class="muted">Мясо пока не продаётся в Паллете. Эти продукты нужны для приготовления, но не входят в клубную стоимость и WhatsApp-заявку магазину.</p>';
   for(const it of b.externalItems){
@@ -193,13 +208,17 @@ h+='<p class="muted">* Соль, вода и специи для многих р
  $.innerHTML=h;
  saveState();
  document.getElementById('home-from-result').onclick=showHome;
+ $.querySelectorAll('[data-home]').forEach(el=>el.onchange=()=>{
+  if(el.checked)homeIngredients.add(el.dataset.home);else homeIngredients.delete(el.dataset.home);
+  renderResult(el.checked?'Продукт уже есть дома, поэтому исключён из заявки.':'Продукт возвращён в покупки.');
+ });
  $.querySelectorAll('[data-check]').forEach(el=>el.onchange=()=>{
   if(el.checked)checkedItems.add(el.dataset.check);else checkedItems.delete(el.dataset.check);
   saveState();
   const count=document.getElementById('check-count');
   if(count)count.textContent=b.items.filter(x=>checkedItems.has(x.p.id)).length+' / '+b.items.length+' отмечено';
  });
- $.querySelectorAll('[data-slot]').forEach(sel=>sel.onchange=()=>{if(!sel.value)return;const orig=fixed[sel.dataset.slot];fixed[sel.dataset.slot]=sel.value;const check=C.plan(catalog,recipes,prefs,{seed,fixed,selected:chosen});
+ $.querySelectorAll('[data-slot]').forEach(sel=>sel.onchange=()=>{if(!sel.value)return;const orig=fixed[sel.dataset.slot];fixed[sel.dataset.slot]=sel.value;const check=C.plan(catalog,recipes,prefs,{seed,fixed,selected:chosen,atHome:[...homeIngredients]});
   const target=check.slots.find(s=>s.key===sel.dataset.slot);
   if(!target?.recipe){if(orig===undefined)delete fixed[sel.dataset.slot];else fixed[sel.dataset.slot]=orig;renderResult('Выбранное блюдо не удаётся обеспечить в рамках доступных запасов. Предложите другую замену.');}
   else renderResult('Блюдо заменено. Корзина пересчитана; при ограниченных остатках другие блюда тоже могут измениться.');
@@ -218,7 +237,7 @@ function render(){if(view==='home')renderHome();else if(step<Q.length)renderQues
 async function init(){
  try{
   if(!window.fetch)throw Error('Браузер не поддерживает загрузку каталога');
-  const [p,r]=await Promise.all(['products.json','recipes.json'].map(async f=>{const ans=await fetch('./'+f+'?v=10',{cache:'no-store'});if(!ans.ok)throw Error(f+': HTTP '+ans.status);return ans.json();}));
+  const [p,r]=await Promise.all(['products.json','recipes.json'].map(async f=>{const ans=await fetch('./'+f+'?v=11',{cache:'no-store'});if(!ans.ok)throw Error(f+': HTTP '+ans.status);return ans.json();}));
   catalog=C.normalize(p);recipes=r.recipes;C.checkRecipes(recipes,catalog);if(recipes.length===0)throw Error('Нет рецептов');loadState();render();
  }catch(e){$.innerHTML=`<div class="note"><b>Не удалось загрузить каталог.</b><div class="small">${esc(e.message)}</div></div><button class="btn" id="retry">Повторить</button>`;document.getElementById('retry').onclick=init;}
 }

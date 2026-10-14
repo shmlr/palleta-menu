@@ -16,6 +16,20 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
   let response=await page.goto(entry,{waitUntil:'networkidle',timeout:30000});
   assert(response?.ok(),'start.html must return success');
   await page.getByRole('heading',{name:'Что приготовить на этой неделе?'}).waitFor();
+  const icon=await page.locator('link[rel="icon"]').getAttribute('href');
+  assert(icon.includes('palleta-favicon-32.png?v=20261014-final'),'expected approved favicon');
+  for(const [filename,dim] of [['assets/palleta-favicon-32.png?v=20261014-final',32],['assets/app-icon-192.png?v=20261014-final',192],['assets/app-icon-512.png?v=20261014-final',512]]){
+    const reply=await page.request.get(new URL(filename,root).href);
+    assert(reply.ok(),filename+' should load');
+    const data=await reply.body();
+    assert.equal(data.subarray(0,8).toString('hex'),'89504e470d0a1a0a',filename);
+    assert.equal(data.readUInt32BE(16),dim,filename+' width');
+    assert.equal(data.readUInt32BE(20),dim,filename+' height');
+  }
+  const icoReply=await page.request.get(new URL('favicon.ico',root).href);
+  assert(icoReply.ok(),'favicon.ico accessible');
+  assert.equal((await icoReply.body()).readUInt16LE(2),1,'ICO header');
+
   assert(await page.getByRole('button',{name:'Составить меню'}).isVisible());
   await page.getByRole('button',{name:'Посмотреть пример меню'}).click();
   await page.getByRole('heading',{name:'Семейное меню на 7 дней'}).waitFor();

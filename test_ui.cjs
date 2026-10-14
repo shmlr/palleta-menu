@@ -26,3 +26,18 @@ assert(fs.readFileSync(basedir+'app.js','utf8').includes('shopping-check'));
 console.log('PASS: installable application, offline cache, local shopping checklist');
 
 assert(fs.readFileSync(basedir+'app.js','utf8').includes('Зелень есть в ассортименте Паллеты'));
+
+const tabIcon=fs.readFileSync(basedir+'assets/palleta-favicon-32.png');
+const pwa192=fs.readFileSync(basedir+'assets/app-icon-192.png');
+const pwa512=fs.readFileSync(basedir+'assets/app-icon-512.png');
+const ico=fs.readFileSync(basedir+'favicon.ico');
+for(const [x,side] of [[tabIcon,32],[pwa192,192],[pwa512,512]]){
+ assert.deepStrictEqual([...x.subarray(0,8)],[137,80,78,71,13,10,26,10]);
+ assert.strictEqual(x.readUInt32BE(16),side);
+ assert.strictEqual(x.readUInt32BE(20),side);
+}
+assert.strictEqual(ico.readUInt16LE(2),1);
+assert(index.includes('palleta-favicon-32.png?v=20261014-final'));
+assert(manifest.icons.some(x=>x.sizes==='192x192')&&manifest.icons.some(x=>x.sizes==='512x512'));
+assert(sw.includes('favicon.ico'));
+console.log('PASS: approved Palleta favicon and PWA icon dimensions');

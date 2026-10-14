@@ -18,7 +18,8 @@
     "14.10.2026: грудка без кости как замена филе; хек как аналог минтая по белой рыбе (наименование в min-max). Потроха — отдельный ингредиент и два самостоятельных рецепта, а не автоматическая замена филе.",
     "Все новые товары с sku_code=null, без live-цен и текущих запасов; данные по WhatsApp передаются покупателем только после нажатия на ссылку.",
     "14.10.2026 v1.4: мясо, фарш, филе, грудка и потроха больше не продаются через меню Паллеты; сохраняются в рецептах как домашняя/внешняя потребность; в WhatsApp-заявки не попадают, цена магазина не рассчитывается.",
-    "14.10.2026 v1.4: зелень связана с группой «Рынок 2» в УТ 11; укроп, петрушка, кинза подтверждены архивными сведениями, дата не доказывает текущее наличие, шт≠пучок без проверки."
+    "14.10.2026 v1.4: зелень связана с группой «Рынок 2» в УТ 11; укроп, петрушка, кинза подтверждены архивными сведениями, дата не доказывает текущее наличие, шт≠пучок без проверки.",
+    "14.10.2026 20:52:52 +03:00: датированный расширенный XLS min-max (14553 строк) проверен по 7 весовым клубным ценам, внутренним кодам, названиям и единицам кг; цены без изменений, метки времени среза обновлены вручную. Данные наличия не публиковались; ежедневная автоматическая синхронизация Gmail→GitHub не включена."
   ],
   "price_freshness_hours": 24,
   "stock_freshness_minutes": 60,
@@ -318,8 +319,8 @@
       "internal_code": "УТ-00003202",
       "identity_key": "УТ-00003202|3202",
       "identity_source": "paired_UT_stock_and_minmax_audit_2026-10-13",
-      "price_source_system": "1C_UT_11_minmax_email_report",
-      "price_snapshot_time": "2026-10-14T15:20:11+03:00",
+      "price_source_system": "1C_UT_11_minmax_email_verified",
+      "price_snapshot_time": "2026-10-14T20:52:52+03:00",
       "sold_in_palleta": true
     },
     {
@@ -342,9 +343,9 @@
       "sku_code_status": "pending_verification_code_for_search",
       "price_type": "Оптовая, RUB",
       "price_audience": "club_card",
-      "price_source_system": "1C_UT_11_minmax_email_report",
+      "price_source_system": "1C_UT_11_minmax_email_verified",
       "price_matching_internal_code": "УТ-00001185",
-      "price_snapshot_time": "2026-10-14T15:20:11+03:00",
+      "price_snapshot_time": "2026-10-14T20:52:52+03:00",
       "sold_in_palleta": true
     },
     {
@@ -367,9 +368,9 @@
       "sku_code_status": "pending_verification_code_for_search",
       "price_type": "Оптовая, RUB",
       "price_audience": "club_card",
-      "price_source_system": "1C_UT_11_minmax_email_report",
+      "price_source_system": "1C_UT_11_minmax_email_verified",
       "price_matching_internal_code": "УТ-00001447",
-      "price_snapshot_time": "2026-10-14T15:20:11+03:00",
+      "price_snapshot_time": "2026-10-14T20:52:52+03:00",
       "sold_in_palleta": true
     },
     {
@@ -392,8 +393,8 @@
       "sku_code_status": "pending_verification_code_for_search",
       "price_type": "Оптовая, RUB",
       "price_audience": "club_card",
-      "price_snapshot_time": "2026-10-14T15:20:11+03:00",
-      "price_source_system": "1C_UT_11_minmax_email_report",
+      "price_snapshot_time": "2026-10-14T20:52:52+03:00",
+      "price_source_system": "1C_UT_11_minmax_email_verified",
       "price_matching_internal_code": "УТ-00020184",
       "sold_in_palleta": true
     },
@@ -417,9 +418,9 @@
       "sku_code_status": "pending_verification_code_for_search",
       "price_type": "Оптовая, RUB",
       "price_audience": "club_card",
-      "price_source_system": "1C_UT_11_minmax_email_report",
+      "price_source_system": "1C_UT_11_minmax_email_verified",
       "price_matching_internal_code": "УТ-00001729",
-      "price_snapshot_time": "2026-10-14T15:20:11+03:00",
+      "price_snapshot_time": "2026-10-14T20:52:52+03:00",
       "sold_in_palleta": true
     },
     {
@@ -442,9 +443,9 @@
       "sku_code_status": "pending_verification_code_for_search",
       "price_type": "Оптовая, RUB",
       "price_audience": "club_card",
-      "price_source_system": "1C_UT_11_minmax_email_report",
+      "price_source_system": "1C_UT_11_minmax_email_verified",
       "price_matching_internal_code": "УТ-00000753",
-      "price_snapshot_time": "2026-10-14T15:20:11+03:00",
+      "price_snapshot_time": "2026-10-14T20:52:52+03:00",
       "sold_in_palleta": true
     },
     {
@@ -467,9 +468,9 @@
       "sku_code_status": "pending_verification_code_for_search",
       "price_type": "Оптовая, RUB",
       "price_audience": "club_card",
-      "price_source_system": "1C_UT_11_minmax_email_report",
+      "price_source_system": "1C_UT_11_minmax_email_verified",
       "price_matching_internal_code": "УТ-00007197",
-      "price_snapshot_time": "2026-10-14T15:20:11+03:00",
+      "price_snapshot_time": "2026-10-14T20:52:52+03:00",
       "sold_in_palleta": true
     },
     {
@@ -949,5 +950,12 @@
     "price_type": "Оптовая, RUB",
     "audience": "club_card",
     "description": "Только по клубной карте Паллеты"
+  },
+  "last_reference_import": {
+    "source": "verified_emailed_minmax_XLS",
+    "as_of": "2026-10-14T20:52:52+03:00",
+    "mode": "manual_audit_dated_club_prices_only",
+    "updated_prices": 7,
+    "online_stock_confirmed": false
   }
 }

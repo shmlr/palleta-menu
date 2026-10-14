@@ -27,14 +27,16 @@ MSK = timezone(timedelta(hours=3))
 EXPECTED_HEADERS = {
     (0, 1): "Код",
     (0, 3): "Наименование",
-    (0, 4): "Цена",
+    (0, 4): "Доп. инфо",
     (0, 5): "Доп. цены",
-    (0, 7): "Текущие остатки",
+    (0, 6): "Текущие остатки",
+    (1, 4): "Реквизиты",
     (1, 5): "Цена Оптовая",
-    (1, 8): "Свободный остаток",
+    (1, 7): "Свободный остаток",
+    (2, 4): "<<ЕдиницаИзмерения>>",
 }
-MAX_BYTES = 5_000_000
-MAX_ROWS = 10_000
+MAX_BYTES = 25_000_000
+MAX_ROWS = 40_000
 
 
 def fail(message: str):
@@ -82,20 +84,26 @@ def read_report(path):
             if code in rows:
                 fail("duplicate internal code in XLS: " + code)
             name = sheet.cell_value(n, 3)
+            unit = sheet.cell_value(n, 4)
             price = sheet.cell_value(n, 5)
             if not isinstance(name, str) or not name.strip():
                 fail("product name missing for " + code)
-            if not isinstance(price, (int, float)) or isinstance(price, bool) or not math.isfinite(price):
-                fail("non-numeric club price for " + code)
-            if price <= 0 or price > 50_000:
-                fail("invalid club price for " + code)
-            try:
-                rounded = Decimal(str(price)).quantize(Decimal(".01"), rounding=ROUND_HALF_UP)
-            except (InvalidOperation, ValueError):
-                fail("unusable club price for " + code)
-            if rounded != Decimal(str(price)):
-                fail("unexpected price precision for " + code)
-            rows[code] = {"name": name.strip(), "price": rounded}
+            if not isinstance(unit, str) or not unit.strip():
+                unit = None  # Unrelated SKUs may have no unit; allowlist rows must.
+            # The expanded XLS includes 14K+ products and some have blank club prices.
+            # Do not reject the entire report for unrelated unpriced items.
+            # The approved subset is validated strictly in run() below.
+            rounded = None
+            if isinstance(price, (int, float)) and not isinstance(price, bool) and math.isfinite(price):
+                if 0 < price <= 50_000:
+                    try:
+                        dec = Decimal(str(price))
+                        cents = dec.quantize(Decimal(".01"), rounding=ROUND_HALF_UP)
+                        if cents == dec:
+                            rounded = cents
+                    except (InvalidOperation, ValueError):
+                        pass
+            rows[code] = {"name": name.strip(), "unit": unit, "price": rounded}
         return captured, rows
     finally:
         if "book" in locals():
@@ -122,6 +130,8 @@ def run(report_path, catalog_path, allowlist_path, *, sender, subject, email_sen
     catalog = json.loads(Path(catalog_path).read_text(encoding="utf-8"))
     if manifest.get("mode") != "dated_club_price_only" or manifest.get("price_type") != CLUB:
         fail("allowlist policy mismatch")
+    if catalog.get("price_policy",{}).get("price_type") != CLUB:
+        fail("catalog price policy is not club-card price")
     approved = manifest.get("approved", [])
     if not approved or len({a["id"] for a in approved}) != len(approved):
         fail("approved manifest is empty or duplicates IDs")
@@ -145,6 +155,10 @@ def run(report_path, catalog_path, allowlist_path, *, sender, subject, email_sen
             fail(pid + ": required internal code is missing in XLS")
         if normal(source["name"]) != normal(spec["ut_name"]):
             fail(pid + ": source item name changed: manual review required")
+        if normal(source["unit"]) != normal(spec["ut_unit"]):
+            fail(pid + ": source unit differs from approved UT unit")
+        if source["price"] is None:
+            fail(pid + ": approved club price missing or invalid in XLS")
         old = p.get("price")
         if isinstance(old, (int, float)) and old > 0:
             prior = Decimal(str(old))

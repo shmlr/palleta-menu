@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "mode": "dated_club_price_only",
   "source": "minmax_UT11_email_xls",
   "source_mail_from": "palleta.store@yandex.ru",
@@ -73,10 +73,14 @@
   "conditions": [
     "exact internal code",
     "exact normalized frozen UT name",
-    "known UT unit kg from 1C reports, not from XLS",
+    "unit must equal approved kg in report column E, with unchanged exact internal code and product name",
     "one safe price per product",
     "price change at most 50 percent",
     "one validated mail matching report timestamp",
-    "never publish quantities"
-  ]
+    "never publish quantities",
+    "new export can include unrelated rows without valid price; fail only for missing or invalid approved prices",
+    "never treat column H free stock as online stock"
+  ],
+  "source_layout": "minmax_2026_10_14_20_52_with_unit",
+  "description": "Updated XLS has 14553 product rows and <<ЕдиницаИзмерения>> column; only seven approved kilogram products may publish dated club prices."
 }

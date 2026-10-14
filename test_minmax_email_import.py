@@ -11,9 +11,9 @@ import xlwt
 from tools.import_minmax_email import run
 
 MSK=timezone(timedelta(hours=3))
-CAP="2026-10-14 19-00-13"
-SENT="2026-10-14T19:00:13+03:00"
-NOW=datetime(2026,10,14,20,1,0,tzinfo=MSK)
+CAP="2026-10-14 20-52-52"
+SENT="2026-10-14T20:52:56+03:00"
+NOW=datetime(2026,10,14,21,5,0,tzinfo=MSK)
 
 
 class MinMaxEveningTests(unittest.TestCase):
@@ -31,13 +31,14 @@ class MinMaxEveningTests(unittest.TestCase):
         self.source_catalog=json.loads(self.cat.read_text(encoding="utf-8"))
         self.synthetic()
 
-    def synthetic(self,overrides=None,omit=None):
+    def synthetic(self,overrides=None,omit=None,extra_rows=0):
         overrides=overrides or {}
         book=xlwt.Workbook(encoding="utf-8")
         sheet=book.add_sheet("Лист_1")
-        headers={(0,1):"Код",(0,3):"Наименование",(0,4):"Цена",
-                 (0,5):"Доп. цены",(0,7):"Текущие остатки",
-                 (1,5):"Цена Оптовая",(1,8):"Свободный остаток"}
+        headers={(0,1):"Код",(0,3):"Наименование",(0,4):"Доп. инфо",
+                 (0,5):"Доп. цены",(0,6):"Текущие остатки",
+                 (1,4):"Реквизиты",(1,5):"Цена Оптовая",
+                 (1,7):"Свободный остаток",(2,4):"<<ЕдиницаИзмерения>>"}
         headers.update(overrides.get("headers",{}))
         for (r,c),v in headers.items():sheet.write(r,c,v)
         sheet.write(3,3,"РД (7)")
@@ -45,9 +46,18 @@ class MinMaxEveningTests(unittest.TestCase):
             if p["id"]==omit:continue
             sheet.write(n,1,p["internal_code"])
             sheet.write(n,3,overrides.get(p["id"]+"_name",p["ut_name"]))
-            sheet.write(n,4,overrides.get(p["id"]+"_retail",1000.00))  # Must not leak.
+            sheet.write(n,4,overrides.get(p["id"]+"_unit",p["ut_unit"]))
             sheet.write(n,5,overrides.get(p["id"]+"_club",next(x["price"] for x in self.source_catalog["products"] if x["id"]==p["id"])))
-            sheet.write(n,8,overrides.get(p["id"]+"_stock",999.123))  # Must not leak.
+            sheet.write(n,6,overrides.get(p["id"]+"_days_stock",11))  # Not a price.
+            sheet.write(n,7,overrides.get(p["id"]+"_stock",999.123))  # Must not leak.
+        for j in range(extra_rows):
+            n=len(self.mapping)+4+j
+            sheet.write(n,1,"УТ-"+str(50000000+j).zfill(8))
+            sheet.write(n,3,"Unrelated synthetic category item "+str(j))
+            sheet.write(n,4,"шт")
+            if j%3:sheet.write(n,5,10)
+            # Some unrelated rows have blank club price, which should not fail the allowlist.
+            if j%20==0:sheet.write(n,7,0)
         book.save(str(self.xls))
 
     def evaluate(self,**k):
@@ -61,18 +71,34 @@ class MinMaxEveningTests(unittest.TestCase):
         outcome,audit=self.evaluate()
         self.assertEqual(audit["result"],"PASS_DATED_REFERENCE_ONLY")
         self.assertEqual(audit["updated_prices"],7)
-        self.assertEqual(audit["capture"],"2026-10-14T19:00:13+03:00")
+        self.assertEqual(audit["capture"],"2026-10-14T20:52:52+03:00")
         for p in outcome["products"]:
             if p["id"] in {x["id"] for x in self.mapping}:
                 self.assertEqual(p["price"],next(x["price"] for x in self.source_catalog["products"] if x["id"]==p["id"]))
                 self.assertEqual(p["price_source"],"manual_club_snapshot")
-                self.assertEqual(p["price_snapshot_time"],"2026-10-14T19:00:13+03:00")
+                self.assertEqual(p["price_snapshot_time"],"2026-10-14T20:52:52+03:00")
                 self.assertEqual(p["availability"],"unknown")
                 self.assertIsNone(p["stock_quantity"])
                 self.assertNotEqual(p["price"],1000.0)
             if not p["sold_in_palleta"]:
                 self.assertIsNone(p["price"])
         self.assertNotIn("999.123",json.dumps(outcome))
+
+
+    def test_wrong_unit_stops(self):
+        self.synthetic({"potato_unit":"шт"})
+        with self.assertRaisesRegex(ValueError,"unit differs"):self.evaluate()
+
+    def test_missing_approved_price_stops(self):
+        self.synthetic({"potato_club":"нет"})
+        with self.assertRaisesRegex(ValueError,"club price missing"):self.evaluate()
+
+    def test_large_expanded_14553_sku_report(self):
+        self.synthetic(extra_rows=14553-len(self.mapping))
+        updated,audit=self.evaluate()
+        self.assertEqual(audit["source_rows"],14553)
+        self.assertEqual(audit["updated_prices"],7)
+        self.assertFalse(audit["stock_published"])
 
     def test_wrong_header_stops(self):
         self.synthetic({"headers":{(1,5):"Цена Закупочная"}})

@@ -1,0 +1,82 @@
+{
+  "schema_version": 1,
+  "mode": "dated_club_price_only",
+  "source": "minmax_UT11_email_xls",
+  "source_mail_from": "palleta.store@yandex.ru",
+  "source_mail_subject": "Паллета 1С - Меню",
+  "expected_file_prefix": "Отчет_Паллета 1С - Меню_",
+  "currency": "RUB",
+  "price_type": "Оптовая, RUB",
+  "approved": [
+    {
+      "id": "potato",
+      "internal_code": "УТ-00003202",
+      "ut_name": "Картофель",
+      "ut_unit": "кг",
+      "pricing_mode": "by_weight"
+    },
+    {
+      "id": "onion",
+      "internal_code": "УТ-00001185",
+      "ut_name": "Лук репчатый",
+      "ut_unit": "кг",
+      "pricing_mode": "by_weight"
+    },
+    {
+      "id": "carrot",
+      "internal_code": "УТ-00001447",
+      "ut_name": "Морковь",
+      "ut_unit": "кг",
+      "pricing_mode": "by_weight"
+    },
+    {
+      "id": "tomato",
+      "internal_code": "УТ-00020184",
+      "ut_name": "Помидоры Новичок",
+      "ut_unit": "кг",
+      "pricing_mode": "by_weight"
+    },
+    {
+      "id": "pepper",
+      "internal_code": "УТ-00001729",
+      "ut_name": "Перец зеленый болгарский",
+      "ut_unit": "кг",
+      "pricing_mode": "by_weight"
+    },
+    {
+      "id": "zucchini",
+      "internal_code": "УТ-00000753",
+      "ut_name": "Кабачки",
+      "ut_unit": "кг",
+      "pricing_mode": "by_weight"
+    },
+    {
+      "id": "pumpkin",
+      "internal_code": "УТ-00007197",
+      "ut_name": "Тыква",
+      "ut_unit": "кг",
+      "pricing_mode": "by_weight"
+    }
+  ],
+  "excluded_until_review": [
+    "mistral_rice_900",
+    "eggs_s1_30",
+    "shams_rice_900",
+    "snezhana_flour_2000",
+    "dill",
+    "parsley",
+    "cilantro",
+    "chicken_fillet",
+    "beef_mince",
+    "chicken_offal"
+  ],
+  "conditions": [
+    "exact internal code",
+    "exact normalized frozen UT name",
+    "known UT unit kg from 1C reports, not from XLS",
+    "one safe price per product",
+    "price change at most 50 percent",
+    "one validated mail matching report timestamp",
+    "never publish quantities"
+  ]
+}

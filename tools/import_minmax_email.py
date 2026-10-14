@@ -1,0 +1,221 @@
+#!/usr/bin/env python3
+"""Fail-closed importer for dated club prices in emailed min-max XLS (BIFF8).
+
+Input must be obtained from the trusted Gmail message by an authorized operator.
+Only the seven reviewed kilogram-based products are eligible for price updates.
+Never imports or publishes free/physical stock, costs, markup, customer or supplier data.
+Requires xlrd==2.0.2; never runs macros, creates orders, or contacts 1C.
+"""
+from __future__ import annotations
+
+import argparse
+from datetime import datetime, timedelta, timezone
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+import json
+import math
+import os
+from pathlib import Path
+import re
+import tempfile
+
+import xlrd
+
+REPORT_NAME = re.compile(r"^Отчет_Паллета 1С - Меню_(\d{4}-\d{2}-\d{2} \d{2}-\d{2}-\d{2})\.xls$")
+INTERNAL = re.compile(r"^[А-ЯA-Z]{2}-\d{8}$")
+CLUB = "Оптовая, RUB"
+MSK = timezone(timedelta(hours=3))
+EXPECTED_HEADERS = {
+    (0, 1): "Код",
+    (0, 3): "Наименование",
+    (0, 4): "Цена",
+    (0, 5): "Доп. цены",
+    (0, 7): "Текущие остатки",
+    (1, 5): "Цена Оптовая",
+    (1, 8): "Свободный остаток",
+}
+MAX_BYTES = 5_000_000
+MAX_ROWS = 10_000
+
+
+def fail(message: str):
+    raise ValueError("STOP: " + message)
+
+
+def normal(value):
+    return " ".join(str(value).strip().replace("ё", "е").lower().split())
+
+
+def timestamp(value, label):
+    try:
+        dt = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        fail(label + " must be ISO-8601 date with timezone")
+    if dt.tzinfo is None:
+        fail(label + " must specify a timezone")
+    return dt.astimezone(MSK)
+
+
+def read_report(path):
+    path = Path(path)
+    match = REPORT_NAME.fullmatch(path.name)
+    if not match:
+        fail("unexpected XLS filename; expected dated Palleta menu report")
+    if not path.is_file() or not 0 < path.stat().st_size <= MAX_BYTES:
+        fail("XLS size or existence invalid")
+    captured = datetime.strptime(match.group(1), "%Y-%m-%d %H-%M-%S").replace(tzinfo=MSK)
+    try:
+        book = xlrd.open_workbook(str(path), on_demand=True, formatting_info=False)
+        if book.nsheets != 1:
+            fail("expected one XLS sheet")
+        sheet = book.sheet_by_index(0)
+        if not 4 < sheet.nrows <= MAX_ROWS:
+            fail("unexpected number of XLS rows")
+        for (r, c), expected in EXPECTED_HEADERS.items():
+            if normal(sheet.cell_value(r, c)) != normal(expected):
+                fail(f"XLS header changed at ({r},{c}); want {expected}")
+        rows = {}
+        for n in range(4, sheet.nrows):
+            code = sheet.cell_value(n, 1)
+            if not isinstance(code, str) or not INTERNAL.fullmatch(code.strip()):
+                continue  # Totals and category labels.
+            code = code.strip()
+            if code in rows:
+                fail("duplicate internal code in XLS: " + code)
+            name = sheet.cell_value(n, 3)
+            price = sheet.cell_value(n, 5)
+            if not isinstance(name, str) or not name.strip():
+                fail("product name missing for " + code)
+            if not isinstance(price, (int, float)) or isinstance(price, bool) or not math.isfinite(price):
+                fail("non-numeric club price for " + code)
+            if price <= 0 or price > 50_000:
+                fail("invalid club price for " + code)
+            try:
+                rounded = Decimal(str(price)).quantize(Decimal(".01"), rounding=ROUND_HALF_UP)
+            except (InvalidOperation, ValueError):
+                fail("unusable club price for " + code)
+            if rounded != Decimal(str(price)):
+                fail("unexpected price precision for " + code)
+            rows[code] = {"name": name.strip(), "price": rounded}
+        return captured, rows
+    finally:
+        if "book" in locals():
+            book.release_resources()
+
+
+def run(report_path, catalog_path, allowlist_path, *, sender, subject, email_sent_at, now=None):
+    if sender.strip().lower() != "palleta.store@yandex.ru":
+        fail("sender does not match approved Palleta email")
+    if subject.strip() != "Паллета 1С - Меню":
+        fail("email subject does not match approved report")
+    sent = timestamp(email_sent_at, "email_sent_at")
+    now = (now or datetime.now(timezone.utc)).astimezone(MSK)
+    if now.tzinfo is None:
+        fail("current timestamp must be timezone-aware")
+    captured, rows = read_report(report_path)
+    if abs((sent - captured).total_seconds()) > 120:
+        fail("email timestamp and report filename timestamp disagree")
+    if captured > now + timedelta(minutes=2):
+        fail("report time is in the future")
+    if now - captured > timedelta(hours=8):
+        fail("XLS is too old for an evening price import")
+    manifest = json.loads(Path(allowlist_path).read_text(encoding="utf-8"))
+    catalog = json.loads(Path(catalog_path).read_text(encoding="utf-8"))
+    if manifest.get("mode") != "dated_club_price_only" or manifest.get("price_type") != CLUB:
+        fail("allowlist policy mismatch")
+    approved = manifest.get("approved", [])
+    if not approved or len({a["id"] for a in approved}) != len(approved):
+        fail("approved manifest is empty or duplicates IDs")
+    if len({a["internal_code"] for a in approved}) != len(approved):
+        fail("approved manifest duplicates internal codes")
+    products = {p["id"]: p for p in catalog["products"]}
+    changes = []
+    for spec in approved:
+        code, pid = spec["internal_code"], spec["id"]
+        if spec.get("ut_unit") != "кг" or spec.get("pricing_mode") != "by_weight":
+            fail(pid + ": only pre-approved kilogram products may be imported")
+        p = products.get(pid)
+        if not p or p.get("sold_in_palleta") is not True:
+            fail(pid + ": target product not sold in Palleta")
+        if p.get("pricing_mode") != "by_weight" or p.get("unit") != "кг":
+            fail(pid + ": unit or pricing mode differs from approved kilogram")
+        if (p.get("internal_code") or p.get("price_matching_internal_code")) != code:
+            fail(pid + ": catalog internal code does not match allowlist")
+        source = rows.get(code)
+        if not source:
+            fail(pid + ": required internal code is missing in XLS")
+        if normal(source["name"]) != normal(spec["ut_name"]):
+            fail(pid + ": source item name changed: manual review required")
+        old = p.get("price")
+        if isinstance(old, (int, float)) and old > 0:
+            prior = Decimal(str(old))
+            if abs(source["price"] - prior) > prior * Decimal(".50"):
+                fail(pid + ": club price changed by more than 50%; needs manual review")
+        old_time = p.get("price_snapshot_time")
+        if old_time and captured <= timestamp(old_time, pid + ".price_snapshot_time"):
+            fail(pid + ": report is not newer than imported price snapshot")
+        if p.get("price_as_of") and captured.date() < datetime.strptime(p["price_as_of"], "%Y-%m-%d").date():
+            fail(pid + ": report date older than product price")
+        changes.append((p, source["price"]))
+    if not changes:
+        fail("nothing matched")
+    as_of = captured.date().isoformat()
+    iso = captured.isoformat(timespec="seconds")
+    for p, price in changes:
+        p["price"] = float(price)
+        p["price_source"] = "manual_club_snapshot"
+        p["price_as_of"] = as_of
+        p["price_snapshot_time"] = iso
+        p["price_source_system"] = "1C_UT_11_minmax_email_verified"
+        p["price_type"] = CLUB
+        p["price_audience"] = "club_card"
+        p["availability"] = "unknown"
+        p["stock_quantity"] = None
+        p["availability_checked_at"] = None
+    catalog["last_reference_import"] = {
+        "source": "minmax_verified_email",
+        "as_of": iso,
+        "mode": "dated_club_price_only",
+        "updated_prices": len(changes),
+        "online_stock_confirmed": False
+    }
+    catalog.setdefault("source_notes", []).append(
+        f"{iso}: семипозиционный контрольный импорт клубных цен из XLS min-max; "
+        "только датированные справочные цены. Остатки, закупочные цены, маржа и сырой файл не публиковались."
+    )
+    public = [(p["id"], p["price"]) for p, _ in changes]
+    return catalog, {"result": "PASS_DATED_REFERENCE_ONLY", "capture": iso,
+                     "source_rows": len(rows), "updated_prices": len(changes),
+                     "products": public, "stock_published": False}
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--xls", type=Path, required=True)
+    ap.add_argument("--catalog", type=Path, default=Path("products.json"))
+    ap.add_argument("--allowlist", type=Path, default=Path("tools/club_price_allowlist.json"))
+    ap.add_argument("--sender", required=True)
+    ap.add_argument("--subject", required=True)
+    ap.add_argument("--email-sent-at", required=True)
+    ap.add_argument("--write", action="store_true", help="Explicitly allow atomic catalog update")
+    args = ap.parse_args()
+    try:
+        result, audit = run(
+            args.xls, args.catalog, args.allowlist,
+            sender=args.sender, subject=args.subject, email_sent_at=args.email_sent_at)
+        if args.write:
+            target = args.catalog.resolve()
+            target.parent.mkdir(parents=True, exist_ok=True)
+            with tempfile.NamedTemporaryFile("w", dir=target.parent, encoding="utf-8",
+                                              delete=False, prefix=".palleta-validated-") as temp:
+                temp.write(json.dumps(result, ensure_ascii=False, indent=2) + "\n")
+                staged = Path(temp.name)
+            os.replace(staged, target)
+        audit["mode"] = "CATALOG_UPDATED" if args.write else "DRY_RUN_NO_WRITES"
+        print(json.dumps(audit, ensure_ascii=False, indent=2))
+    except (ValueError, xlrd.XLRDError, OSError, KeyError, TypeError) as exc:
+        print("FAIL_CLOSED: " + str(exc))
+        raise SystemExit(2)
+
+
+if __name__ == "__main__":
+    main()

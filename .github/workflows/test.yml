@@ -16,3 +16,9 @@ jobs:
         run: node test_core.cjs
       - name: Validate mobile UI flow
         run: node test_ui.cjs
+      - name: Install Chromium driver
+        run: npm install --no-save --ignore-scripts playwright-core@1.56.1
+      - name: Test real Chrome against local app, including saved menu
+        run: |
+          python3 -m http.server 8765 --bind 127.0.0.1 >/tmp/palleta-http.log 2>&1 &
+          node e2e_smoke.cjs

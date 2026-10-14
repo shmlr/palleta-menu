@@ -4,7 +4,7 @@
   "description": "21 блюдо, семейная корзина и список покупок. Цены и наличие требуют подтверждения.",
   "lang": "ru",
   "id": "./",
-  "start_url": "./",
+  "start_url": "./start.html",
   "scope": "./",
   "display": "standalone",
   "background_color": "#F4F7FA",

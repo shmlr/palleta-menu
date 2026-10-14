@@ -24,3 +24,16 @@ jobs:
           path: .
       - id: deployment
         uses: actions/deploy-pages@v4
+  live-smoke:
+    name: Smoke test published web app in Chrome
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Chromium driver
+        run: npm install --no-save --ignore-scripts playwright-core@1.56.1
+      - name: Test real published GitHub Pages application
+        env:
+          TEST_URL: https://shmlr.github.io/palleta-menu/
+          CHROME_BIN: /usr/bin/google-chrome
+        run: node e2e_smoke.cjs

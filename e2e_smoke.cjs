@@ -45,7 +45,7 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
   assert(payload.includes('Список покупок:')&&payload.includes('фактическое наличие'));
   assert(payload.includes('Заявка предварительная.')&&payload.length<3000);
   assert(payload.includes('3 дн.'),'WhatsApp reflects chosen 3-day period');
-  const toggle=page.locator('#shopping [data-home]').first();
+  const toggle=page.locator('input[data-home]').first();
   const ownedIngredient=await toggle.getAttribute('data-home');
   await toggle.check();
   assert(await page.locator('#at-home').isVisible());

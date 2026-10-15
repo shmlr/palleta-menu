@@ -173,6 +173,27 @@ class MinMaxEveningTests(unittest.TestCase):
         self.allow.write_text(json.dumps(manifest,ensure_ascii=False),encoding="utf-8")
         with self.assertRaisesRegex(ValueError,"pack size"):self.evaluate()
 
+    def test_unrelated_numeric_code_is_allowed_but_not_imported(self):
+        # Real expanded XLS has 24 legacy numeric-only codes outside allowlist.
+        self.synthetic({"extra_code":"69331106821"}, extra_rows=1)
+        catalog, audit = self.evaluate()
+        self.assertEqual(audit["updated_prices"], 1)
+        self.assertEqual(audit["source_rows"], len(self.mapping) + 1)
+        self.assertTrue(all(p["id"] != "69331106821" for p in catalog["products"]))
+        self.assertFalse(audit["stock_published"])
+
+    def test_numeric_internal_code_cannot_be_approved(self):
+        manifest=json.loads(self.allow.read_text(encoding="utf-8"))
+        manifest["approved"][0]["internal_code"]="69331106821"
+        self.allow.write_text(json.dumps(manifest,ensure_ascii=False),encoding="utf-8")
+        with self.assertRaisesRegex(ValueError, "approved internal code"):
+            self.evaluate()
+
+    def test_duplicate_approved_code_in_unrelated_row_stops(self):
+        self.synthetic({"extra_code":self.mapping[0]["internal_code"]}, extra_rows=1)
+        with self.assertRaisesRegex(ValueError, "duplicate internal code"):
+            self.evaluate()
+
     def test_unexpected_internal_code_stops(self):
         self.synthetic({"extra_code":"BAD-CODE"},extra_rows=1)
         with self.assertRaisesRegex(ValueError,"unexpected nonempty internal code"):self.evaluate()

@@ -22,6 +22,10 @@ import xlrd
 
 REPORT_NAME = re.compile(r"^Отчет_Паллета 1С - Меню_(\d{4}-\d{2}-\d{2} \d{2}-\d{2}-\d{2})\.xls$")
 INTERNAL = re.compile(r"^[А-ЯA-Z]{2}-\d{8}$")
+# Some unrelated legacy products use numeric-only 4..11-digit internal codes.
+# This never authorizes numeric codes for price import: approved identities
+# must still pass the canonical prefix form and independent reviewed pairs.
+UNRELATED_NUMERIC_CODE = re.compile(r"^\d{4,11}$")
 CLUB = "Оптовая, RUB"
 MSK = timezone(timedelta(hours=3))
 EXPECTED_HEADERS = {
@@ -84,7 +88,7 @@ def read_report(path):
             code = sheet.cell_value(n, 1)
             if code is None or code == "":
                 continue  # Group and totals rows have empty codes.
-            if not isinstance(code, str) or not INTERNAL.fullmatch(code.strip()):
+            if not isinstance(code, str) or not (INTERNAL.fullmatch(code.strip()) or UNRELATED_NUMERIC_CODE.fullmatch(code.strip())):
                 fail(f"unexpected nonempty internal code on XLS row {n + 1}")
             code = code.strip()
             if code in rows:
@@ -161,6 +165,8 @@ def run(report_path, catalog_path, allowlist_path, *, sender, subject, email_sen
     changes = []
     for spec in approved:
         code, pid = spec["internal_code"], spec["id"]
+        if not isinstance(code, str) or not INTERNAL.fullmatch(code):
+            fail(pid + ": approved internal code must use canonical prefix format")
         if spec.get("ut_unit") != "кг" or spec.get("pricing_mode") != "by_weight":
             fail(pid + ": only pre-approved kilogram products may be imported")
         p = products.get(pid)

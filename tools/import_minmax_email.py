@@ -2,7 +2,7 @@
 """Fail-closed importer for dated club prices in emailed min-max XLS (BIFF8).
 
 Input must be obtained from the trusted Gmail message by an authorized operator.
-Only the seven reviewed kilogram-based products are eligible for price updates.
+Only independently REVIEWED paired-code SKU identities may receive dated price updates.
 Never imports or publishes free/physical stock, costs, markup, customer or supplier data.
 Requires xlrd==2.0.2; never runs macros, creates orders, or contacts 1C.
 """
@@ -26,13 +26,17 @@ CLUB = "Оптовая, RUB"
 MSK = timezone(timedelta(hours=3))
 EXPECTED_HEADERS = {
     (0, 1): "Код",
+    (0, 2): "Артикул",
     (0, 3): "Наименование",
     (0, 4): "Доп. инфо",
     (0, 5): "Доп. цены",
     (0, 6): "Текущие остатки",
     (1, 4): "Реквизиты",
     (1, 5): "Цена Оптовая",
+    (1, 6): "Дней запаса",
     (1, 7): "Свободный остаток",
+    (1, 8): "Сумма излишков",
+    (1, 9): "В пути",
     (2, 4): "<<ЕдиницаИзмерения>>",
 }
 MAX_BYTES = 25_000_000
@@ -67,8 +71,8 @@ def read_report(path):
     captured = datetime.strptime(match.group(1), "%Y-%m-%d %H-%M-%S").replace(tzinfo=MSK)
     try:
         book = xlrd.open_workbook(str(path), on_demand=True, formatting_info=False)
-        if book.nsheets != 1:
-            fail("expected one XLS sheet")
+        if book.nsheets != 1 or book.sheet_names() != ["Лист_1"]:
+            fail("expected precisely one Лист_1 XLS sheet")
         sheet = book.sheet_by_index(0)
         if not 4 < sheet.nrows <= MAX_ROWS:
             fail("unexpected number of XLS rows")
@@ -78,8 +82,10 @@ def read_report(path):
         rows = {}
         for n in range(4, sheet.nrows):
             code = sheet.cell_value(n, 1)
+            if code is None or code == "":
+                continue  # Group and totals rows have empty codes.
             if not isinstance(code, str) or not INTERNAL.fullmatch(code.strip()):
-                continue  # Totals and category labels.
+                fail(f"unexpected nonempty internal code on XLS row {n + 1}")
             code = code.strip()
             if code in rows:
                 fail("duplicate internal code in XLS: " + code)
@@ -104,13 +110,17 @@ def read_report(path):
                     except (InvalidOperation, ValueError):
                         pass
             rows[code] = {"name": name.strip(), "unit": unit, "price": rounded}
+        footer = sheet.cell_value(sheet.nrows - 1, 3)
+        total = re.fullmatch(r"Итого различных товаров:\s*([0-9 ]+)", str(footer).strip())
+        if not total or int(total.group(1).replace(" ", "")) != len(rows):
+            fail("XLS product count does not match the report footer")
         return captured, rows
     finally:
         if "book" in locals():
             book.release_resources()
 
 
-def run(report_path, catalog_path, allowlist_path, *, sender, subject, email_sent_at, now=None):
+def run(report_path, catalog_path, allowlist_path, *, sender, subject, email_sent_at, now=None, identity_path=None):
     if sender.strip().lower() != "palleta.store@yandex.ru":
         fail("sender does not match approved Palleta email")
     if subject.strip() != "Паллета 1С - Меню":
@@ -128,6 +138,14 @@ def run(report_path, catalog_path, allowlist_path, *, sender, subject, email_sen
         fail("XLS is too old for an evening price import")
     manifest = json.loads(Path(allowlist_path).read_text(encoding="utf-8"))
     catalog = json.loads(Path(catalog_path).read_text(encoding="utf-8"))
+    registry_path = Path(identity_path) if identity_path else Path(__file__).with_name("sku_identity_review.json")
+    registry = json.loads(registry_path.read_text(encoding="utf-8"))
+    reviews = registry.get("products", [])
+    if not isinstance(reviews, list) or len({r.get("product_id") for r in reviews}) != len(reviews):
+        fail("identity registry invalid or duplicates product IDs")
+    reviewed = {r["product_id"]: r for r in reviews}
+    if manifest.get("schema_version") != 3:
+        fail("manifest schema_version requires reviewed paired identity")
     if manifest.get("mode") != "dated_club_price_only" or manifest.get("price_type") != CLUB:
         fail("allowlist policy mismatch")
     if catalog.get("price_policy",{}).get("price_type") != CLUB:
@@ -137,6 +155,8 @@ def run(report_path, catalog_path, allowlist_path, *, sender, subject, email_sen
         fail("approved manifest is empty or duplicates IDs")
     if len({a["internal_code"] for a in approved}) != len(approved):
         fail("approved manifest duplicates internal codes")
+    if len({str(a.get("search_code")) for a in approved}) != len(approved):
+        fail("approved manifest duplicates search codes")
     products = {p["id"]: p for p in catalog["products"]}
     changes = []
     for spec in approved:
@@ -150,6 +170,25 @@ def run(report_path, catalog_path, allowlist_path, *, sender, subject, email_sen
             fail(pid + ": unit or pricing mode differs from approved kilogram")
         if (p.get("internal_code") or p.get("price_matching_internal_code")) != code:
             fail(pid + ": catalog internal code does not match allowlist")
+        search = str(spec.get("search_code") or "")
+        if not search or str(p.get("sku_code") or "") != search:
+            fail(pid + ": search code is not approved in catalog")
+        if p.get("sku_code_status") != "verified_report" or p.get("identity_key") != code + "|" + search:
+            fail(pid + ": verified internal/search code pair missing in catalog")
+        approval = reviewed.get(pid)
+        if (not approval or approval.get("review_status") != "REVIEWED"
+                or approval.get("unit_conversion_approved") is not True):
+            fail(pid + ": independent identity review not approved")
+        if (approval.get("internal_code") != code
+                or str(approval.get("search_code") or "") != search
+                or normal(approval.get("ut_name")) != normal(spec.get("ut_name"))
+                or normal(approval.get("ut_unit")) != "кг"
+                or normal(approval.get("target_unit")) != "кг"):
+            fail(pid + ": identity review code, name or units mismatch")
+        step = spec.get("target_purchase_step_kg")
+        if (not isinstance(step, (int, float)) or isinstance(step, bool) or step <= 0
+                or str(p.get("pack_size")) != str(step)):
+            fail(pid + ": pack size or purchase increment not approved")
         source = rows.get(code)
         if not source:
             fail(pid + ": required internal code is missing in XLS")
@@ -193,7 +232,7 @@ def run(report_path, catalog_path, allowlist_path, *, sender, subject, email_sen
         "online_stock_confirmed": False
     }
     catalog.setdefault("source_notes", []).append(
-        f"{iso}: семипозиционный контрольный импорт клубных цен из XLS min-max; "
+        f"{iso}: контрольный импорт {len(changes)} клубных цен из XLS min-max; "
         "только датированные справочные цены. Остатки, закупочные цены, маржа и сырой файл не публиковались."
     )
     public = [(p["id"], p["price"]) for p, _ in changes]
@@ -207,6 +246,7 @@ def main():
     ap.add_argument("--xls", type=Path, required=True)
     ap.add_argument("--catalog", type=Path, default=Path("products.json"))
     ap.add_argument("--allowlist", type=Path, default=Path("tools/club_price_allowlist.json"))
+    ap.add_argument("--identity-review", type=Path, default=Path("tools/sku_identity_review.json"))
     ap.add_argument("--sender", required=True)
     ap.add_argument("--subject", required=True)
     ap.add_argument("--email-sent-at", required=True)
@@ -215,7 +255,8 @@ def main():
     try:
         result, audit = run(
             args.xls, args.catalog, args.allowlist,
-            sender=args.sender, subject=args.subject, email_sent_at=args.email_sent_at)
+            sender=args.sender, subject=args.subject, email_sent_at=args.email_sent_at,
+            identity_path=args.identity_review)
         if args.write:
             target = args.catalog.resolve()
             target.parent.mkdir(parents=True, exist_ok=True)

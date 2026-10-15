@@ -1,5 +1,5 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "mode": "dated_club_price_only",
   "source": "minmax_UT11_email_xls",
   "source_mail_from": "palleta.store@yandex.ru",
@@ -13,49 +13,9 @@
       "internal_code": "УТ-00003202",
       "ut_name": "Картофель",
       "ut_unit": "кг",
-      "pricing_mode": "by_weight"
-    },
-    {
-      "id": "onion",
-      "internal_code": "УТ-00001185",
-      "ut_name": "Лук репчатый",
-      "ut_unit": "кг",
-      "pricing_mode": "by_weight"
-    },
-    {
-      "id": "carrot",
-      "internal_code": "УТ-00001447",
-      "ut_name": "Морковь",
-      "ut_unit": "кг",
-      "pricing_mode": "by_weight"
-    },
-    {
-      "id": "tomato",
-      "internal_code": "УТ-00020184",
-      "ut_name": "Помидоры Новичок",
-      "ut_unit": "кг",
-      "pricing_mode": "by_weight"
-    },
-    {
-      "id": "pepper",
-      "internal_code": "УТ-00001729",
-      "ut_name": "Перец зеленый болгарский",
-      "ut_unit": "кг",
-      "pricing_mode": "by_weight"
-    },
-    {
-      "id": "zucchini",
-      "internal_code": "УТ-00000753",
-      "ut_name": "Кабачки",
-      "ut_unit": "кг",
-      "pricing_mode": "by_weight"
-    },
-    {
-      "id": "pumpkin",
-      "internal_code": "УТ-00007197",
-      "ut_name": "Тыква",
-      "ut_unit": "кг",
-      "pricing_mode": "by_weight"
+      "pricing_mode": "by_weight",
+      "search_code": "3202",
+      "target_purchase_step_kg": 0.1
     }
   ],
   "excluded_until_review": [
@@ -68,19 +28,24 @@
     "cilantro",
     "chicken_fillet",
     "beef_mince",
-    "chicken_offal"
+    "chicken_offal",
+    "onion",
+    "carrot",
+    "tomato",
+    "pepper",
+    "zucchini",
+    "pumpkin"
   ],
   "conditions": [
-    "exact internal code",
-    "exact normalized frozen UT name",
-    "unit must equal approved kg in report column E, with unchanged exact internal code and product name",
-    "one safe price per product",
-    "price change at most 50 percent",
-    "one validated mail matching report timestamp",
-    "never publish quantities",
-    "new export can include unrelated rows without valid price; fail only for missing or invalid approved prices",
-    "never treat column H free stock as online stock"
+    "exact frozen internal code plus independently verified search code, not inferred from suffix",
+    "approved reviewed identity register",
+    "frozen UT product name and unit kg",
+    "approved by-weight target and purchase increment",
+    "strict report headers, sheet, row count and footer",
+    "trusted email timing and <=50% price change",
+    "no stock, quantity, costs, or raw XLS publishing",
+    "STOP if any approved identity or price is ambiguous"
   ],
   "source_layout": "minmax_2026_10_14_20_52_with_unit",
-  "description": "Updated XLS has 14553 product rows and <<ЕдиницаИзмерения>> column; only seven approved kilogram products may publish dated club prices."
+  "description": "Actual XLS 2026-10-14 20:52: 14577 unique internal codes, 11 unrelated blank club prices. Only potato has separately verified UT internal/search code pair. Six previous dated-price snapshots NOT approved for unattended imports."
 }

@@ -21,7 +21,7 @@ from urllib.request import Request, urlopen
 
 EXPECTED_SENDER = "palleta.store@yandex.ru"
 EXPECTED_SUBJECT = "Паллета 1С - Меню"
-NAME = re.compile(r"^Отчет_Паллета 1С - Меню_(\d{4}-\d{2}-\d{2} \d{2}-\d{2})\.xls$")
+NAME = re.compile(r"^Отчет_Паллета 1С - Меню_(\d{4}-\d{2}-\d{2} \d{2}-\d{2}-\d{2})\.xls$")
 MSK = timezone(timedelta(hours=3))
 MAX_XLS = 25_000_000
 MAX_RAW = 45_000_000

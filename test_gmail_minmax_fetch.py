@@ -2,6 +2,8 @@
 import base64
 from datetime import datetime, timedelta, timezone
 from email.message import EmailMessage
+from email.parser import BytesParser
+from email import policy
 import unittest
 
 from tools.fetch_gmail_minmax import SourceError, extract_report
@@ -30,6 +32,7 @@ def make_message(sender="palleta.store@yandex.ru", subject="Паллета 1С -
 class GmailMinmaxTest(unittest.TestCase):
     def test_legitimate_raw_mime(self):
         raw, ts = make_message()
+        print("SYNTHETIC_FILENAME_DEBUG", [repr(p.get_filename()) for p in BytesParser(policy=policy.default).parsebytes(base64.urlsafe_b64decode(raw)).walk() if p.get_filename()])
         name, binary, arrive, captured = extract_report(raw, ts)
         self.assertEqual(name, NAME)
         self.assertEqual(binary, XLS)

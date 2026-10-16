@@ -1,0 +1,70 @@
+name: Gmail min-max to reviewed club-price PR
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '23 19 * * *'  # 22:23 MSK, after regular evening 1C email
+permissions:
+  contents: write
+  pull-requests: write
+concurrency:
+  group: palleta-gmail-minmax
+  cancel-in-progress: false
+jobs:
+  guarded-price-update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned binary XLS dependency
+        run: python3 -m pip install --disable-pip-version-check xlrd==2.0.2 xlwt==1.3.0
+      - name: Verify MIME extraction security tests
+        run: python3 -m unittest -v test_gmail_minmax_fetch.py
+      - name: Read authenticated Gmail RAW into runner temp
+        id: gmail
+        env:
+          GMAIL_OAUTH_CLIENT_ID: ${{ secrets.GMAIL_OAUTH_CLIENT_ID }}
+          GMAIL_OAUTH_CLIENT_SECRET: ${{ secrets.GMAIL_OAUTH_CLIENT_SECRET }}
+          GMAIL_OAUTH_REFRESH_TOKEN: ${{ secrets.GMAIL_OAUTH_REFRESH_TOKEN }}
+        run: python3 tools/fetch_gmail_minmax.py --output-dir "$RUNNER_TEMP/palleta-gmail-private" --github-output "$GITHUB_OUTPUT"
+      - name: Strict real-XLS dry run
+        if: steps.gmail.outputs.found == 'true'
+        env:
+          XLS_PATH: ${{ steps.gmail.outputs.xls_path }}
+          EMAIL_SENT_AT: ${{ steps.gmail.outputs.sent_at }}
+        run: |
+          python3 tools/import_minmax_email.py --xls "$XLS_PATH" --sender 'palleta.store@yandex.ru' --subject 'Паллета 1С - Меню' --email-sent-at "$EMAIL_SENT_AT"
+      - name: Update only approved dated club prices in checkout
+        if: steps.gmail.outputs.found == 'true'
+        env:
+          XLS_PATH: ${{ steps.gmail.outputs.xls_path }}
+          EMAIL_SENT_AT: ${{ steps.gmail.outputs.sent_at }}
+        run: |
+          python3 tools/import_minmax_email.py --xls "$XLS_PATH" --sender 'palleta.store@yandex.ru' --subject 'Паллета 1С - Меню' --email-sent-at "$EMAIL_SENT_AT" --write
+      - name: Run importer and full site QA before PR
+        if: steps.gmail.outputs.found == 'true'
+        run: |
+          python3 -m unittest -v test_sync_ut_catalog.py test_minmax_email_import.py test_gmail_minmax_fetch.py
+          node test_core.cjs
+          node test_ui.cjs
+      - name: Browser smoke test before PR
+        if: steps.gmail.outputs.found == 'true'
+        run: |
+          npm install --no-save --ignore-scripts playwright-core@1.56.1
+          python3 -m http.server 8765 --bind 127.0.0.1 >/tmp/palleta-gmail-http.log 2>&1 &
+          node e2e_smoke.cjs
+      - name: Prepare PR with only sanitized products.json
+        if: steps.gmail.outputs.found == 'true'
+        uses: peter-evans/create-pull-request@v8
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: 'prices: dated Gmail club snapshot (reviewed SKU only)'
+          branch: automation/gmail-club-prices
+          delete-branch: true
+          add-paths: products.json
+          title: 'Паллета: клубные цены из проверенного вечернего письма'
+          body: |
+            Источник: Gmail API RAW, точный отправитель, тема, подлинность DKIM/SPF/DMARC, timestamp.
+            Только заранее REVIEWED SKU и тип цены «Оптовая, RUB».
+            Выполнены настоящий XLS dry run, импорт и тесты до PR.
+            Остатки, закупочные цены, маржа, сырой XLS и данные 1С не отправлялись в репозиторий.
+            **Не сливать без просмотра изменённых клубных цен и статуса QA.**

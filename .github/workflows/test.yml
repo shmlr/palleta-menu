@@ -18,6 +18,8 @@ jobs:
         run: python3 -m pip install --disable-pip-version-check xlrd==2.0.2 xlwt==1.3.0
       - name: Validate dated min-max email price importer
         run: python3 -m unittest -v test_minmax_email_import.py
+      - name: Validate Gmail RAW extraction security gates
+        run: python3 -m unittest -v test_gmail_minmax_fetch.py
       - name: Validate basket and club pricing
         run: node test_core.cjs
       - name: Validate mobile UI flow

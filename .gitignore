@@ -7,3 +7,9 @@ raw/
 *.token
 .env*
 __pycache__/
+
+# Gmail OAuth credentials and raw message dumps must stay private
+client_secret_*.json
+gmail_oauth_*.json
+*.eml
+*.rawmime

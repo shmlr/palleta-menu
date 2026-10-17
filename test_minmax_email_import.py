@@ -204,7 +204,7 @@ class MinMaxEveningTests(unittest.TestCase):
             for j in range(src.ncols):
                 val = src.cell_value(i, j)
                 if val != "":
-                    sh.write(i, j, "A 123-45 B" if i == 5 and j == 1 else val)
+                    sh.write(i, j, "A 123-45 B" if i == 6 and j == 1 else val)
         wb.save(str(self.xls))
         with self.assertRaisesRegex(ValueError, "duplicate internal code"):
             self.evaluate()

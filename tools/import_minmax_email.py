@@ -65,6 +65,26 @@ def timestamp(value, label):
     return dt.astimezone(MSK)
 
 
+def code_shape(value):
+    """Return non-sensitive syntax diagnostics, never a source code or product name."""
+    if not isinstance(value, str):
+        return "cell_type=" + type(value).__name__
+    from unicodedata import category
+    classes = set()
+    for ch in value.strip():
+        if ch.isdecimal():
+            classes.add("digit")
+        elif "А" <= ch <= "я" or ch in "Ёё":
+            classes.add("cyrillic")
+        elif "A" <= ch <= "z":
+            classes.add("latin")
+        elif ch.isspace():
+            classes.add("whitespace")
+        else:
+            classes.add("other_" + category(ch)[0])
+    return "cell_type=str, length=" + str(len(value.strip())) + ", char_classes=" + ",".join(sorted(classes))
+
+
 def read_report(path):
     path = Path(path)
     match = REPORT_NAME.fullmatch(path.name)
@@ -89,7 +109,7 @@ def read_report(path):
             if code is None or code == "":
                 continue  # Group and totals rows have empty codes.
             if not isinstance(code, str) or not (INTERNAL.fullmatch(code.strip()) or UNRELATED_NUMERIC_CODE.fullmatch(code.strip())):
-                fail(f"unexpected nonempty internal code on XLS row {n + 1}")
+                fail(f"unexpected nonempty internal code on XLS row {n + 1}; {code_shape(code)}")
             code = code.strip()
             if code in rows:
                 fail("duplicate internal code in XLS: " + code)

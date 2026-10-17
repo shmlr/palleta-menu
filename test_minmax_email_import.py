@@ -198,6 +198,16 @@ class MinMaxEveningTests(unittest.TestCase):
         self.synthetic({"extra_code":"BAD-CODE"},extra_rows=1)
         with self.assertRaisesRegex(ValueError,"unexpected nonempty internal code"):self.evaluate()
 
+    def test_bad_code_diagnostics_do_not_expose_value(self):
+        self.synthetic({"extra_code":"BAD-CODE"},extra_rows=1)
+        with self.assertRaises(ValueError) as caught:
+            self.evaluate()
+        message = str(caught.exception)
+        self.assertIn("unexpected nonempty internal code", message)
+        self.assertIn("length=8", message)
+        self.assertIn("char_classes=", message)
+        self.assertNotIn("BAD-CODE", message)
+
     def test_report_footer_count_stops(self):
         self.synthetic({"footer_count":777})
         with self.assertRaisesRegex(ValueError,"product count"):self.evaluate()

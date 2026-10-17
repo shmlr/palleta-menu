@@ -182,6 +182,33 @@ class MinMaxEveningTests(unittest.TestCase):
         self.assertTrue(all(p["id"] != "69331106821" for p in catalog["products"]))
         self.assertFalse(audit["stock_published"])
 
+    def test_unapproved_mixed_opaque_code_is_counted_not_imported(self):
+        # The real report contains unrelated IDs with digits, Latin,
+        # punctuation and whitespace. Their syntax does not authorize prices.
+        self.synthetic({"extra_code":"A 123-45 B"}, extra_rows=1)
+        catalog, audit = self.evaluate()
+        self.assertEqual(audit["source_rows"], len(self.mapping) + 1)
+        self.assertEqual(audit["updated_prices"], 1)
+        self.assertTrue(all(p["id"] != "A 123-45 B" for p in catalog["products"]))
+
+    def test_duplicate_unapproved_opaque_code_stops(self):
+        self.synthetic({"extra_code":"A 123-45 B"}, extra_rows=2)
+        # Rewrite fixture so both unrelated rows use the same code.
+        import xlrd
+        import xlwt
+        old = xlrd.open_workbook(str(self.xls))
+        src = old.sheet_by_index(0)
+        wb = xlwt.Workbook(encoding="utf-8")
+        sh = wb.add_sheet("Лист_1")
+        for i in range(src.nrows):
+            for j in range(src.ncols):
+                val = src.cell_value(i, j)
+                if val != "":
+                    sh.write(i, j, "A 123-45 B" if i == 6 and j == 1 else val)
+        wb.save(str(self.xls))
+        with self.assertRaisesRegex(ValueError, "duplicate internal code"):
+            self.evaluate()
+
     def test_numeric_internal_code_cannot_be_approved(self):
         manifest=json.loads(self.allow.read_text(encoding="utf-8"))
         manifest["approved"][0]["internal_code"]="69331106821"

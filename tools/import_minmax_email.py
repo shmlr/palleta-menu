@@ -26,6 +26,12 @@ INTERNAL = re.compile(r"^[А-ЯA-Z]{2}-\d{8}$")
 # This never authorizes numeric codes for price import: approved identities
 # must still pass the canonical prefix form and independent reviewed pairs.
 UNRELATED_NUMERIC_CODE = re.compile(r"^\d{4,11}$")
+# Other unrelated 1C IDs may include Latin letters, digits, punctuation and spaces.
+# These are NEVER eligible for price imports; only INTERNAL plus reviewed pairs are.
+UNRELATED_OPAQUE_CODE = re.compile(r"^[A-Za-zА-Яа-яЁё0-9][A-Za-zА-Яа-яЁё0-9 ./_-]{0,79}$")
+
+def valid_unapproved_code(code):
+    return bool(UNRELATED_OPAQUE_CODE.fullmatch(code) and any(ch.isdecimal() for ch in code))
 CLUB = "Оптовая, RUB"
 MSK = timezone(timedelta(hours=3))
 EXPECTED_HEADERS = {
@@ -108,7 +114,7 @@ def read_report(path):
             code = sheet.cell_value(n, 1)
             if code is None or code == "":
                 continue  # Group and totals rows have empty codes.
-            if not isinstance(code, str) or not (INTERNAL.fullmatch(code.strip()) or UNRELATED_NUMERIC_CODE.fullmatch(code.strip())):
+            if not isinstance(code, str) or not (INTERNAL.fullmatch(code.strip()) or UNRELATED_NUMERIC_CODE.fullmatch(code.strip()) or valid_unapproved_code(code.strip())):
                 fail(f"unexpected nonempty internal code on XLS row {n + 1}; {code_shape(code)}")
             code = code.strip()
             if code in rows:

@@ -1,0 +1,67 @@
+name: Receive 1C club-price report from Gmail (PR only)
+on:
+  schedule:
+    - cron: '15 16-20 * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+  pull-requests: write
+concurrency:
+  group: gmail-minmax-import
+  cancel-in-progress: false
+jobs:
+  receive-validate-propose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GMAIL_OAUTH_CLIENT_ID: ${{ secrets.GMAIL_OAUTH_CLIENT_ID }}
+      GMAIL_OAUTH_CLIENT_SECRET: ${{ secrets.GMAIL_OAUTH_CLIENT_SECRET }}
+      GMAIL_OAUTH_REFRESH_TOKEN: ${{ secrets.GMAIL_OAUTH_REFRESH_TOKEN }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install XLS reader
+        run: python -m pip install --disable-pip-version-check xlrd==2.0.2
+      - name: Download XLS privately, validate and stage allowed prices
+        run: python tools/fetch_gmail_minmax.py
+      - name: Run import contract tests
+        run: |
+          python -m pip install --disable-pip-version-check xlwt==1.3.0
+          python -m unittest -v test_minmax_email_import.py test_sync_ut_catalog.py
+      - name: Confirm only public catalog changed
+        id: diff
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --exit-code -- . ':!products.json'
+          if git diff --quiet -- products.json; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Run application QA
+        if: steps.diff.outputs.changed == 'true'
+        run: |
+          node test_core.cjs
+          node test_ui.cjs
+          npm install --no-save --ignore-scripts playwright-core@1.56.1
+          python3 -m http.server 8765 --bind 127.0.0.1 >/tmp/palleta-http.log 2>&1 &
+          node e2e_smoke.cjs
+      - name: Create guarded price PR
+        if: steps.diff.outputs.changed == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          branch="automation/minmax-$GITHUB_RUN_ID"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branch"
+          git add -- products.json
+          git commit -m "data: validated dated 1C club reference prices"
+          git push origin "$branch"
+          gh pr create --base main --head "$branch" --title "1C min-max: validated club-price reference" --body "Automated Gmail ingestion. ONLY allowlisted independently reviewed SKU prices. No raw XLS, stock, costs or credentials. Requires QA and review before merge."

@@ -16,6 +16,11 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
   let response=await page.goto(entry,{waitUntil:'networkidle',timeout:30000});
   assert(response?.ok(),'start.html must return success');
   await page.getByRole('heading',{name:'Что приготовить на этой неделе?'}).waitFor();
+  const localPoint=await page.locator('.lp-referral-link').getAttribute('href');
+  assert(localPoint.startsWith('https://wa.me/79637940001?text='),'verified Local Point contact');
+  assert(new URL(localPoint).searchParams.get('text').includes('Паллета'),'LP source tag inside message');
+  const recipeCardLink=await page.locator('.cross-brand').getAttribute('href');
+  assert(recipeCardLink.startsWith('https://berbena.pro/prorecepty?utm_source=palleta_menu'),'PROРЕЦЕПТЫ offer, not generic homepage');
   const icon=await page.locator('link[rel="icon"]').getAttribute('href');
   assert(icon.includes('palleta-favicon-32.png?v=20261014-final'),'expected approved favicon');
   for(const [filename,dim] of [['assets/palleta-favicon-32.png?v=20261014-final',32],['assets/app-icon-192.png?v=20261014-final',192],['assets/app-icon-512.png?v=20261014-final',512]]){

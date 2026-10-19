@@ -17,3 +17,14 @@ Exact sender/subject, Gmail authentication result, one dated XLS, BIFF OLE bytes
 Only potato УТ-00003202|3202 is currently approved. Herbs, meat, and the remaining six weight items are still blocked.
 
 Google OAuth setup and GitHub secret creation need mailbox owner's one-time action; connected ChatGPT Gmail grant is not exportable.
+
+## Long-term Google OAuth (owner action required)
+External + Testing issues Gmail refresh tokens that generally expire after seven days. For unattended daily use, the owner must open Google Cloud → Google Auth Platform → Audience and evaluate **Publish app / In production**. Never re-use a revoked or mismatched client secret, and do not paste OAuth credentials into GitHub PRs. Production mode removes the special seven-day testing expiry but DOES NOT guarantee tokens never expire: they can be revoked by the user, security changes, inactivity, or Google's policies. Gmail readonly is a **restricted scope**, potentially subject to Google verification and app security requirements. A truly personal-use integration may meet an exemption; check Google's actual eligibility in the console rather than falsely claiming verified status. Do not bypass verification or disable security protections.
+
+Production readiness gates:
+1. Explicit owner approval of consent-screen publication and any Google verification requested.
+2. Perform a token exchange test with the existing GitHub Secrets (no secret values in logs).
+3. Confirm at least one subsequent scheduled run receives a fresh evening XLS, creates no duplicate PR, and does not release without review.
+4. If no run or repeated STOP, investigate via GitHub Actions logs; token errors require a new authorization by owner. Github scheduled workflows may be delayed and public repositories can have their schedules disabled after 60 days of inactivity.
+
+IMPORTANT: When a previous automatic club-price PR remains open, the workflow intentionally skips creating another. Process or close pending PR first; this prevents repeated duplicate price updates and redundant review.

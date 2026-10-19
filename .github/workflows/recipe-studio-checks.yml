@@ -26,3 +26,9 @@ jobs:
       - run: node test_core.cjs
       - run: node test_ui.cjs
       - run: node recipe-studio/test_studio.cjs
+      - name: Install Chromium driver for mobile E2E
+        run: npm install --no-save --ignore-scripts playwright-core@1.56.1
+      - name: Run real Chrome recipe studio interaction tests
+        run: |
+          python3 -m http.server 8765 --bind 127.0.0.1 >/tmp/studio-http.log 2>&1 &
+          node recipe-studio/e2e.cjs

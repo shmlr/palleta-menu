@@ -94,6 +94,17 @@
     }
     return true;
   }
+  function palletaReferralHtml(){
+    const recipeUrl="https://berbena.pro/prorecepty?utm_source=palleta_menu&utm_medium=referral&utm_campaign=recipes_to_berbena";
+    const localPointContact="https://wa.me/79637940001?text=%D0%97%D0%B4%D1%80%D0%B0%D0%B2%D1%81%D1%82%D0%B2%D1%83%D0%B9%D1%82%D0%B5!%20%D0%A3%D0%B2%D0%B8%D0%B4%D0%B5%D0%BB%20%D0%BC%D0%B5%D0%BD%D1%8E%20%D0%BD%D0%B0%20%D0%BD%D0%B5%D0%B4%D0%B5%D0%BB%D1%8E%20%D0%B2%20%D0%BF%D1%80%D0%B8%D0%BB%D0%BE%D0%B6%D0%B5%D0%BD%D0%B8%D0%B8%20%C2%AB%D0%9F%D0%B0%D0%BB%D0%BB%D0%B5%D1%82%D0%B0%C2%BB.%20%D0%A5%D0%BE%D1%87%D1%83%20%D0%BE%D0%B1%D1%81%D1%83%D0%B4%D0%B8%D1%82%D1%8C%20%D0%BF%D0%BE%D1%85%D0%BE%D0%B6%D0%B8%D0%B9%20%D1%86%D0%B8%D1%84%D1%80%D0%BE%D0%B2%D0%BE%D0%B9%20%D0%B8%D0%BD%D1%81%D1%82%D1%80%D1%83%D0%BC%D0%B5%D0%BD%D1%82%20%D0%B4%D0%BB%D1%8F%20%D0%BC%D0%BE%D0%B5%D0%B3%D0%BE%20%D0%BC%D0%B0%D0%B3%D0%B0%D0%B7%D0%B8%D0%BD%D0%B0%20%D0%B8%D0%BB%D0%B8%20%D0%B1%D0%B8%D0%B7%D0%BD%D0%B5%D1%81%D0%B0.";
+    return '<section class="panel" id="berbena-recipes"><h2>Больше идей и рецептов</h2>'+
+      '<p>PROРЕЦЕПТЫ на berbena.pro: отдельная коллекция из 120 блюд, инструкции и настройка порций. Доступ 590 ₽ без подписки.</p>'+
+      '<a class="btn secondary" href="'+esc(recipeUrl)+'" target="_blank" rel="noopener noreferrer">Открыть PROРЕЦЕПТЫ на berbena.pro ↗</a>'+
+      '<p class="muted">Коллекция berbena отличается от списка блюд в меню Паллеты.</p></section>'+
+      '<section class="panel" id="local-point-contact"><div class="pill">Для бизнеса · Local Point</div>'+
+      '<h2>Хотите похожее меню для своего магазина?</h2><p>Обсудите идею веб-инструмента с Local Point.</p>'+
+      '<a class="btn secondary" href="'+esc(localPointContact)+'" target="_blank" rel="noopener noreferrer">Написать Local Point в WhatsApp ↗</a></section>';
+  }
   function planHtml(){
     const p=getPlan();
     let h='<section class="panel"><h2>Меню на '+prefs.days+' '+(prefs.days===3?'дня':'дней')+'</h2>'+
@@ -119,6 +130,7 @@
     h+='</section>';
     h+=pantryHtml();
     h+=basketHtml(p);
+    h+=palletaReferralHtml();
     return h;
   }
   function pantryHtml(){

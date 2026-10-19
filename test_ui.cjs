@@ -56,6 +56,13 @@ for(const file of ['index.html','start.html']){
  assert(source.includes('href="tel:+79637940001"'),'click-to-call on '+file);
  assert(source.includes('+7 963 794-00-01'),'displayed phone formatted on '+file);
  assert(source.includes('Написать в WhatsApp'),'separate WhatsApp action on '+file);
+ assert(source.includes('https://t.me/Local_01'),'Telegram URL from owner '+file);
+ assert(source.includes('https://max.ru/u/f9LHodD0cOLOdqweo6ZD2M-8go71XGKMQN7-aZq8vsAcHJBEE3f3_rRGGqI'),'MAX URL from owner '+file);
+ assert.equal((source.match(/class="lp-referral"/g)||[]).length,1,'only one Local Point block '+file);
+ assert.equal((source.match(/class="lp-icon-btn /g)||[]).length,4,'four compact clickable contact icons '+file);
+ assert(source.includes('.lp-referral-phone{display:inline-flex;min-height:44px;align-items:center;color:#052132;font-size:15px;font-weight:800;text-decoration:none!important;'),'no underlining on LP phone '+file);
+ assert(source.includes('Local Point для бизнеса'),'LP copy without em dash '+file);
+ assert(!source.includes('—'),'no long dash in static page '+file);
  assert(source.indexOf('class="lp-referral"')>source.indexOf('class="cross-brand"'),'LP block remains near bottom of '+file);
 }
 assert(index.includes('berbena.pro/prorecepty?utm_source=palleta_menu'),'deep link into PROРЕЦЕПТЫ landing product');

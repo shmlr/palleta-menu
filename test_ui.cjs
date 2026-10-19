@@ -4,7 +4,15 @@ function run(saved=null){const elems={};const storage={data:saved,getItem(){retu
 assert(t.app.innerHTML.includes('id="berbena-recipes-referral"'),'PROРЕЦЕПТЫ recommendation after menu');
 assert(t.app.innerHTML.includes('utm_campaign=recipes_to_berbena'),'campaign attribution attached');
 assert(t.app.innerHTML.includes('utm_content=recipe_'),'individual selected meal attribution attached');
-assert(t.app.innerHTML.includes('Ссылка не гарантирует наличие выбранного блюда'),'no false exact recipe matching');assert(t.app.innerHTML.includes('Дома или купить отдельно'));assert(t.app.innerHTML.includes('shopping-check'));assert(t.app.innerHTML.includes('data-home='));assert(!t.app.innerHTML.includes('вес. позиции'));assert(t.app.innerHTML.includes('Заменить на аналог'));assert(t.app.innerHTML.includes('id="whatsapp"'));assert(t.app.innerHTML.includes('https://wa.me/79882040001?text='));assert(t.app.innerHTML.includes('Отправить список в WhatsApp'));console.log('PASS: homepage, 3-day onboarding, product switches and WhatsApp');
+assert(t.app.innerHTML.includes('Ссылка не гарантирует наличие выбранного блюда'),'no false exact recipe matching');assert(t.app.innerHTML.includes('Дома или купить отдельно'));assert(t.app.innerHTML.includes('shopping-check'));assert(t.app.innerHTML.includes('data-home='));assert(!t.app.innerHTML.includes('вес. позиции'));assert(t.app.innerHTML.includes('Заменить на аналог'));assert(t.app.innerHTML.includes('id="whatsapp"'));assert(t.app.innerHTML.includes('https://wa.me/79882040001?text='));assert(t.app.innerHTML.includes('Отправить список в WhatsApp'));
+assert(t.app.innerHTML.includes('Кто ест дома?'));
+assert.equal((t.app.innerHTML.match(/data-attendance="/g)||[]).length,9,'editable attendance on all 3-day meals');
+t.document.getElementById('attendance-weekday').click();
+assert(t.app.innerHTML.includes('6 из 6 домашних блюд'),'weekdays home lunch can be skipped');
+assert(t.storage.data.includes('"attendance"'),'attendance must persist in saved plan');
+t.document.getElementById('attendance-all').click();
+assert(t.app.innerHTML.includes('9 из 9 домашних блюд'),'one-click restore all meals');
+console.log('PASS: 3-day attendance presets, safe default and WhatsApp');
 t.document.getElementById('home-from-result').click();
 assert(t.app.innerHTML.includes('Продолжить сохранённое меню'));
 t.document.getElementById('continue-menu').click();
@@ -23,7 +31,13 @@ const pick=v=>{const el=seven.app.querySelectorAll('[data-answer]').find(x=>x.da
 pick(7);pick(4);pick(60);pick(12000);seven.document.getElementById('next').click();
 assert(seven.app.innerHTML.includes('Семейное меню на 7 дней'));
 assert.strictEqual((seven.app.innerHTML.match(/class="slot"/g)||[]).length,21);
-console.log('PASS: 7-day selection renders 21 meals');
+assert(seven.app.innerHTML.includes('В выходные обед-пикник'),'weekend picnic preset');
+seven.document.getElementById('attendance-picnic').click();
+assert(seven.app.innerHTML.includes('19 из 19 домашних блюд'),'picnic excludes Saturday/Sunday home lunch');
+assert(seven.app.innerHTML.includes('Пикник: продукты рассчитайте отдельно'));
+seven.document.getElementById('attendance-all').click();
+assert(seven.app.innerHTML.includes('21 из 21 домашних блюд'),'weekend default can be restored');
+console.log('PASS: 7-day home weekends and picnic preset');
 })();
 // PWA installation and local checklist contract: offline assets and install metadata must exist.
 const index=fs.readFileSync(basedir+'index.html','utf8');

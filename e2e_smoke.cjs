@@ -51,6 +51,16 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
   assert(recipeLink.includes('utm_content=recipe_'),'recipe source id passed without implying exact match');
   const slots=await page.locator('.slot').count();
   assert.equal(slots,9,'default 3 days must render 9 planned meals');
+  // Family attendance must not shift the main purchase flow off-screen.
+  assert(await page.locator('.attendance-panel').isVisible(),'attendance controls shown alongside menu');
+  assert.equal(await page.locator('[data-attendance]').count(),9);
+  await page.locator('[data-attendance="0-lunch"]').selectOption('2');
+  assert((await page.locator('[data-attendance="0-lunch"]').inputValue())==='2');
+  assert((await page.locator('.slot').first().innerText()).length>10);
+  await page.locator('[data-attendance="0-lunch"]').selectOption('4');
+  assert.equal(await page.locator('[data-attendance="0-lunch"]').inputValue(),'4');
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1),true,'no horizontal scroll after attendance changes at 390px');
+
   await page.locator('[data-slot="0-lunch"]').selectOption('chicken_soup');
   assert(await page.locator('#outside-store').isVisible(),'external ingredients should have a separate block');
   const wa=page.locator('#whatsapp');
@@ -101,6 +111,20 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
   await page.getByRole('heading',{name:'Семейное меню на 7 дней'}).waitFor();
   assert.equal(await page.locator('.slot').count(),21);
   assert.equal(await page.locator('#at-home').count(),0,'new menu clears home flags');
+  await page.getByRole('button',{name:'В выходные обед-пикник'}).click();
+  assert((await page.locator('[data-attendance="5-lunch"]').inputValue())==='picnic');
+  assert((await page.locator('[data-attendance="6-lunch"]').inputValue())==='picnic');
+  assert((await page.locator('#app').innerText()).includes('19 из 19 домашних блюд'),'weekend picnic excludes cooking without inventing food');
+  await page.getByRole('button',{name:'Все едят дома'}).click();
+  assert((await page.locator('#app').innerText()).includes('21 из 21 домашних блюд'));
+  for(const width of [390,360]){
+    await page.setViewportSize({width,height:844});
+    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1),true,'no horizontal scroll at '+width+'px');
+    assert(await page.locator('.lp-referral-logo').isVisible(),'Local Point logo at '+width+'px');
+    assert(await page.locator('.lp-referral-link').isVisible(),'Local Point CTA at '+width+'px');
+    assert(await page.locator('[data-attendance="5-lunch"]').isVisible(),'meal settings usable at '+width+'px');
+  }
+
   await page.screenshot({path:'/tmp/palleta-home-test.png',fullPage:true});
   assert.deepEqual(appErrors,[],'no client-side JS errors');
   console.log('PASS real Chrome: 3/7-day planner, pantry exclusions, saved pantry, WhatsApp');

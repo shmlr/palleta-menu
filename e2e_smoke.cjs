@@ -54,6 +54,8 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
   // Family attendance must not shift the main purchase flow off-screen.
   assert(await page.locator('.attendance-panel').isVisible(),'attendance controls shown alongside menu');
   assert.equal(await page.locator('[data-attendance]').count(),9);
+  assert.equal(await page.locator('details.meal-attendance-details[open]').count(),0,'portion selectors closed by default');
+  await page.locator('[data-attendance-key="0-lunch"] > summary').click();
   await page.locator('[data-attendance="0-lunch"]').selectOption('2');
   assert((await page.locator('[data-attendance="0-lunch"]').inputValue())==='2');
   assert((await page.locator('.slot').first().innerText()).length>10);
@@ -115,6 +117,9 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
   assert((await page.locator('[data-attendance="5-lunch"]').inputValue())==='picnic');
   assert((await page.locator('[data-attendance="6-lunch"]').inputValue())==='picnic');
   assert((await page.locator('#app').innerText()).includes('19 из 19 домашних блюд'),'weekend picnic excludes cooking without inventing food');
+  await page.getByRole('button',{name:'В будни обед вне дома'}).click();
+  assert((await page.locator('[data-attendance="5-lunch"]').inputValue())==='picnic','weekday preset must retain picnic');
+  assert((await page.locator('#app').innerText()).includes('14 из 14 домашних блюд'),'weekday and picnic presets compose');
   await page.getByRole('button',{name:'Все едят дома'}).click();
   assert((await page.locator('#app').innerText()).includes('21 из 21 домашних блюд'));
   for(const width of [390,360]){
@@ -130,7 +135,7 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
     assert.equal(overflow.scroll<=width+1,true,'no horizontal scroll at '+width+'px');
     assert(await page.locator('.lp-referral-logo').isVisible(),'Local Point logo at '+width+'px');
     assert(await page.locator('.lp-referral-link').isVisible(),'Local Point CTA at '+width+'px');
-    assert(await page.locator('[data-attendance="5-lunch"]').isVisible(),'meal settings usable at '+width+'px');
+    assert(await page.locator('[data-attendance-key="5-lunch"] summary').isVisible(),'meal settings accessible at '+width+'px');
   }
 
   await page.screenshot({path:'/tmp/palleta-home-test.png',fullPage:true});

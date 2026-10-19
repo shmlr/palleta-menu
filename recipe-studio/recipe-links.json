@@ -1,0 +1,359 @@
+{
+  "schema_version": 1,
+  "audited_at": "2026-10-19",
+  "notes": "Do not represent recipe-specific links as verified until exact recipe ID, entitlement gate and URL are checked in Mottor. Null is intentional; generic PROРЕЦЕПТЫ landing page is a safe fallback.",
+  "recipes": [
+    {
+      "palleta_id": "egg_tomato",
+      "palleta_name": "Яичница с помидорами",
+      "berbena_id": null,
+      "berbena_url": null,
+      "verified": false,
+      "access_gate_checked": false
+    },
+    {
+      "palleta_id": "omelet_greens",
+      "palleta_name": "Омлет с зеленью",
+      "berbena_id": null,
+      "berbena_url": null,
+      "verified": false,
+      "access_gate_checked": false
+    },
+    {
+      "palleta_id": "omelet_zucchini",
+      "palleta_name": "Омлет с кабачками",
+      "berbena_id": null,
+      "berbena_url": null,
+      "verified": false,
+      "access_gate_checked": false
+    },
+    {
+      "palleta_id": "syrniki",
+      "palleta_name": "Сырники",
+      "berbena_id": null,
+      "berbena_url": null,
+      "verified": false,
+      "access_gate_checked": false
+    },
+    {
+      "palleta_id": "rice_porridge",
+      "palleta_name": "Рисовая каша на молоке",
+      "berbena_id": null,
+      "berbena_url": null,
+      "verified": false,
+      "access_gate_checked": false
+    },
+    {
+      "palleta_id": "pumpkin_rice",
+      "palleta_name": "Рисовая каша с тыквой",
+      "berbena_id": null,
+      "berbena_url": null,
+      "verified": false,
+      "access_gate_checked": false
+    },
+    {
+      "palleta_id": "pancakes",
+      "palleta_name": "Блины на молоке",
+      "berbena_id": null,
+      "berbena_url": null,
+      "verified": false,
+      "access_gate_checked": false
+    },
+    {
+      "palleta_id": "zucchini_fritters",
+      "palleta_name": "Кабачковые оладьи",
+      "berbena_id": null,
+      "berbena_url": null,
+      "verified": false,
+      "access_gate_checked": false
+    },
+    {
+      "palleta_id": "potato_omelet",
+      "palleta_name": "Картофельный омлет",
+      "berbena_id": null,
+      "berbena_url": null,
+      "verified": false,
+      "access_gate_checked": false
+    },
+    {
+      "palleta_id": "cottage_bowl",
+      "palleta_name": "Творог с тёплой тыквой",
+      "berbena_id": null,
+      "berbena_url": null,
+      "verified": false,
+      "access_gate_checked": false
+    },
+    {
+      "palleta_id": "egg_potato",
+      "palleta_name": "Яйца с отварным картофелем",
+      "berbena_id": null,
+      "berbena_url": null,
+      "verified": false,
+      "access_gate_checked": false
+    },
+    {
+      "palleta_id": "pumpkin_flatbread",
+      "palleta_name": "Лепёшки с тыквой",
+      "berbena_id": null,
+      "berbena_url": null,
+      "verified": false,
+      "access_gate_checked": false
+    },
+    {
+      "palleta_id": "lentil_soup",
+      "palleta_name": "Чечевичный суп",
+      "berbena_id": null,
+      "berbena_url": null,
+      "verified": false,
+      "access_gate_checked": false
+    },
+    {
+      "palleta_id": "chicken_soup",
+      "palleta_name": "Куриный суп с лапшой",
+      "berbena_id": null,
+      "berbena_url": null,
+      "verified": false,
+      "access_gate_checked": false
+    },
+    {
+      "palleta_id": "chicken_rice_soup",
+      "palleta_name": "Куриный суп с рисом",
+      "berbena_id": null,
+      "berbena_url": null,
+      "verified": false,
+      "access_gate_checked": false
+    },
+    {
+      "palleta_id": "meatball_soup",
+      "palleta_name": "Суп с фрикадельками",
+      "berbena_id": null,
+      "berbena_url": null,
+      "verified": false,
+      "access_gate_checked": false
+    },
+    {
+      "palleta_id": "vegetable_soup",
+      "palleta_name": "Овощной суп",
+      "berbena_id": null,
+      "berbena_url": null,
+      "verified": false,
+      "access_gate_checked": false
+    },
+    {
+      "palleta_id": "fish_soup",
+      "palleta_name": "Рыбный суп с овощами",
+      "berbena_id": null,
+      "berbena_url": null,
+      "verified": false,
+      "access_gate_checked": false
+    },
+    {
+      "palleta_id": "pumpkin_soup",
+      "palleta_name": "Суп-пюре из тыквы",
+      "berbena_id": null,
+      "berbena_url": null,
+      "verified": false,
+      "access_gate_checked": false
+    },
+    {
+      "palleta_id": "chicken_potato_stew",
+      "palleta_name": "Курица с картофелем на обед",
+      "berbena_id": null,
+      "berbena_url": null,
+      "verified": false,
+      "access_gate_checked": false
+    },
+    {
+      "palleta_id": "rice_vegetables",
+      "palleta_name": "Рис с овощами",
+      "berbena_id": null,
+      "berbena_url": null,
+      "verified": false,
+      "access_gate_checked": false
+    },
+    {
+      "palleta_id": "lentil_vegetables",
+      "palleta_name": "Чечевица с овощами",
+      "berbena_id": null,
+      "berbena_url": null,
+      "verified": false,
+      "access_gate_checked": false
+    },
+    {
+      "palleta_id": "mince_rice",
+      "palleta_name": "Говяжий фарш с рисом",
+      "berbena_id": null,
+      "berbena_url": null,
+      "verified": false,
+      "access_gate_checked": false
+    },
+    {
+      "palleta_id": "tomato_egg_soup",
+      "palleta_name": "Томатный суп с яйцом",
+      "berbena_id": null,
+      "berbena_url": null,
+      "verified": false,
+      "access_gate_checked": false
+    },
+    {
+      "palleta_id": "vegetable_noodles",
+      "palleta_name": "Лапша с овощами",
+      "berbena_id": null,
+      "berbena_url": null,
+      "verified": false,
+      "access_gate_checked": false
+    },
+    {
+      "palleta_id": "chicken_lentil",
+      "palleta_name": "Курица с чечевицей",
+      "berbena_id": null,
+      "berbena_url": null,
+      "verified": false,
+      "access_gate_checked": false
+    },
+    {
+      "palleta_id": "hinkal",
+      "palleta_name": "Хинкал с курицей",
+      "berbena_id": null,
+      "berbena_url": null,
+      "verified": false,
+      "access_gate_checked": false
+    },
+    {
+      "palleta_id": "pilaf",
+      "palleta_name": "Плов с курицей",
+      "berbena_id": null,
+      "berbena_url": null,
+      "verified": false,
+      "access_gate_checked": false
+    },
+    {
+      "palleta_id": "pumpkin_chudu",
+      "palleta_name": "Чуду с тыквой",
+      "berbena_id": null,
+      "berbena_url": null,
+      "verified": false,
+      "access_gate_checked": false
+    },
+    {
+      "palleta_id": "baked_fish",
+      "palleta_name": "Белая рыба с овощами",
+      "berbena_id": null,
+      "berbena_url": null,
+      "verified": false,
+      "access_gate_checked": false
+    },
+    {
+      "palleta_id": "stuffed_pepper",
+      "palleta_name": "Фаршированный перец",
+      "berbena_id": null,
+      "berbena_url": null,
+      "verified": false,
+      "access_gate_checked": false
+    },
+    {
+      "palleta_id": "chicken_zucchini",
+      "palleta_name": "Рагу из курицы и кабачков",
+      "berbena_id": null,
+      "berbena_url": null,
+      "verified": false,
+      "access_gate_checked": false
+    },
+    {
+      "palleta_id": "meatballs",
+      "palleta_name": "Котлеты с рисом и томатами",
+      "berbena_id": null,
+      "berbena_url": null,
+      "verified": false,
+      "access_gate_checked": false
+    },
+    {
+      "palleta_id": "chicken_potatoes",
+      "palleta_name": "Запечённая курица с картофелем",
+      "berbena_id": null,
+      "berbena_url": null,
+      "verified": false,
+      "access_gate_checked": false
+    },
+    {
+      "palleta_id": "mince_zucchini",
+      "palleta_name": "Кабачки с говяжьим фаршем",
+      "berbena_id": null,
+      "berbena_url": null,
+      "verified": false,
+      "access_gate_checked": false
+    },
+    {
+      "palleta_id": "fish_rice",
+      "palleta_name": "Белая рыба с рисом",
+      "berbena_id": null,
+      "berbena_url": null,
+      "verified": false,
+      "access_gate_checked": false
+    },
+    {
+      "palleta_id": "vegetable_bake",
+      "palleta_name": "Овощная запеканка с яйцом",
+      "berbena_id": null,
+      "berbena_url": null,
+      "verified": false,
+      "access_gate_checked": false
+    },
+    {
+      "palleta_id": "chicken_pepper",
+      "palleta_name": "Курица с перцем и помидорами",
+      "berbena_id": null,
+      "berbena_url": null,
+      "verified": false,
+      "access_gate_checked": false
+    },
+    {
+      "palleta_id": "pumpkin_rice_dinner",
+      "palleta_name": "Рис с тыквой и курицей",
+      "berbena_id": null,
+      "berbena_url": null,
+      "verified": false,
+      "access_gate_checked": false
+    },
+    {
+      "palleta_id": "fish_potato_pan",
+      "palleta_name": "Рыба с картофелем в сотейнике",
+      "berbena_id": null,
+      "berbena_url": null,
+      "verified": false,
+      "access_gate_checked": false
+    },
+    {
+      "palleta_id": "vegetable_rice_dinner",
+      "palleta_name": "Овощной рис с яйцом",
+      "berbena_id": null,
+      "berbena_url": null,
+      "verified": false,
+      "access_gate_checked": false
+    },
+    {
+      "palleta_id": "lentil_cutlets",
+      "palleta_name": "Чечевичные котлетки",
+      "berbena_id": null,
+      "berbena_url": null,
+      "verified": false,
+      "access_gate_checked": false
+    },
+    {
+      "palleta_id": "chicken_offal_soup",
+      "palleta_name": "Суп с куриными потрохами",
+      "berbena_id": null,
+      "berbena_url": null,
+      "verified": false,
+      "access_gate_checked": false
+    },
+    {
+      "palleta_id": "chicken_offal_stew",
+      "palleta_name": "Тушёные куриные потроха с картофелем",
+      "berbena_id": null,
+      "berbena_url": null,
+      "verified": false,
+      "access_gate_checked": false
+    }
+  ]
+}

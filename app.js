@@ -14,6 +14,7 @@ let view='home',hasSavedPlan=false;
 let checkedItems=new Set(),homeIngredients=new Set();
 const STORE_KEY='palleta-menu-v1';
 const WHATSAPP_NUMBER='79882040001';
+const BERBENA_URL='https://berbena.pro/prorecepty?utm_source=palleta_menu&utm_medium=referral&utm_campaign=recipes_to_berbena';
 function saveState(){
  try{if(!window.localStorage)return;window.localStorage.setItem(STORE_KEY,JSON.stringify({version:2,step,seed,prefs,fixed,chosen,checked:[...checkedItems],home:[...homeIngredients]}));}catch(e){}
 }
@@ -57,7 +58,7 @@ function renderHome(){
  let h='<div class="home-hero"><span class="pill">Паллета · меню для семьи</span><h1>Что приготовить на этой неделе?</h1><p class="home-lead">Подберите завтраки, обеды и ужины на 3 или 7 дней. Мы соберём продукты в один список покупок.</p><div class="home-stats"><div><b>3 или 7</b><span>дней</span></div><div><b>9 или 21</b><span>блюдо</span></div><div><b>'+recipes.length+'</b><span>рецепта</span></div></div><button class="btn" id="start-menu">Составить меню</button>';
  if(hasSavedPlan)h+='<button class="btn secondary" id="continue-menu">Продолжить сохранённое меню</button>';
  else h+='<button class="btn secondary" id="demo-menu">Посмотреть пример меню</button>';
- h+='</div><div class="panel home-about"><h2>Как это работает</h2><p><b>1.</b> Выберите количество человек, время и ограничения.</p><p><b>2.</b> Получите меню, меняйте блюда и подходящие продукты.</p><p><b>3.</b> Отметьте, что уже есть дома, и отправьте оставшуюся корзину в Паллету.</p></div><p class="muted">Клубные цены показаны справочно с датой. Наличие и итоговую сумму подтвердит магазин.</p>';
+ h+='</div><a class="btn secondary" style="display:block;text-align:center;text-decoration:none" href="./recipe-studio/?brand=palleta">Новое меню на неделю (тестовая версия)</a><div class="panel home-about"><h2>Как это работает</h2><p><b>1.</b> Выберите количество человек, время и ограничения.</p><p><b>2.</b> Получите меню, меняйте блюда и подходящие продукты.</p><p><b>3.</b> Отметьте, что уже есть дома, и отправьте оставшуюся корзину в Паллету.</p></div><p class="muted">Клубные цены показаны справочно с датой. Наличие и итоговую сумму подтвердит магазин.</p>';
  $.innerHTML=h;
  document.getElementById('start-menu').onclick=()=>{step=0;seed=1;fixed={};chosen={};checkedItems.clear();homeIngredients.clear();prefs.days=3;hasSavedPlan=false;view='planner';render();};
  if(hasSavedPlan)document.getElementById('continue-menu').onclick=()=>{step=Q.length;view='planner';render();};
@@ -149,6 +150,7 @@ function renderResult(message=''){
    h+='</div>';
    if((p.slots.indexOf(slot)+1)%3===0)h+='</div>';
  }
+ h+='<aside class="panel recipe-referral" id="berbena-recipes"><h2>Хотите больше идей для домашнего меню?</h2><p>В PROРЕЦЕПТЫ на berbena.pro есть отдельная подборка из 120 рецептов, инструкции и настройка порций. Доступ за 590 ₽, один раз, без подписки.</p><a class="btn secondary" href="'+esc(BERBENA_URL)+'" target="_blank" rel="noopener noreferrer" style="display:block;text-align:center;text-decoration:none">Открыть PROРЕЦЕПТЫ на berbena.pro ↗</a><p class="small">Это отдельная библиотека: блюда в Паллете и на berbena.pro могут отличаться.</p></aside>';
  h+='<div class="panel" id="shopping"><h2>Купить в Паллете</h2><p class="small">В сумму и заявку входят только товары Паллеты, которых нет дома. Мясо учитывается отдельно.</p>';
  const currentConfirm=b.confirmedTotal!==null;
  h+=`<div class="value">${currentConfirm?money(b.confirmedTotal):'Полный итог пока неизвестен'}</div>`;

@@ -35,6 +35,14 @@
 /* Prevent native long recipe options from stretching 360px phone layouts */
 .grid-actions{min-width:0;width:100%}
 .grid-actions .slotselect{flex:1 1 100%;width:100%;min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+
+/* Compact, accessible portion settings; closed unless requested */
+.meal-attendance-details{margin:9px 0 7px;border:0;padding:0;max-width:100%}
+.meal-attendance-details>summary{display:inline-flex;align-items:center;min-height:40px;max-width:100%;font-size:13px;font-weight:750;color:var(--blue);cursor:pointer;text-underline-offset:3px}
+.meal-attendance-details>summary:focus-visible{outline:3px solid var(--red);outline-offset:3px;border-radius:4px}
+.meal-attendance-details[open]{padding:4px 0 10px}
+.meal-attendance-details[open]>summary{margin-bottom:4px}
+@media print{.meal-attendance-details{display:none!important}}
 </style>
 </head>
 <body><main><header><a class="palleta-brand" href="./" aria-label="Паллета — меню на неделю"><img class="palleta-logo" src="./assets/palleta-logo.webp" alt="Паллета — продукты без наценки*"></a><span class="subbrand">Дискаунтер · клубные цены по карте · 7 дней и 3 приёма пищи</span></header>

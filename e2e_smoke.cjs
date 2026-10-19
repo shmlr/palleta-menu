@@ -118,7 +118,7 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
   assert((await page.locator('[data-attendance="5-lunch"]').inputValue())==='picnic');
   assert((await page.locator('[data-attendance="6-lunch"]').inputValue())==='picnic');
   assert((await page.locator('#app').innerText()).includes('19 из 19 домашних блюд'),'weekend picnic excludes cooking without inventing food');
-  await page.getByRole('button',{name:'В будни обед вне дома'}).click();
+  await page.getByRole('button',{name:'Пропустить обеды в будни'}).click();
   assert((await page.locator('[data-attendance="5-lunch"]').inputValue())==='picnic','weekday preset must retain picnic');
   assert((await page.locator('#app').innerText()).includes('14 из 14 домашних блюд'),'weekday and picnic presets compose');
   await page.getByRole('button',{name:'Все едят дома'}).click();

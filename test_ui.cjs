@@ -32,6 +32,14 @@ const sw=fs.readFileSync(basedir+'sw.js','utf8');
 assert(index.includes('rel="manifest"'));
 assert(index.includes('href="https://wa.me/79637940001?text='),'Local Point referral uses independently verified contact');
 assert(index.includes('lp-referral-link'),'Local Point referral visible under main menu');
+for(const file of ['index.html','start.html']){
+ const source=fs.readFileSync(basedir+file,'utf8');
+ assert(source.includes('<img class="lp-referral-logo" src="./assets/local-point-logo.webp"'),'official LP logo visible on '+file);
+ assert(source.includes('href="tel:+79637940001"'),'click-to-call on '+file);
+ assert(source.includes('+7 963 794-00-01'),'displayed phone formatted on '+file);
+ assert(source.includes('Написать в WhatsApp'),'separate WhatsApp action on '+file);
+ assert(source.indexOf('class="lp-referral"')>source.indexOf('class="cross-brand"'),'LP block remains near bottom of '+file);
+}
 assert(index.includes('berbena.pro/prorecepty?utm_source=palleta_menu'),'deep link into PROРЕЦЕПТЫ landing product');
 assert(fs.readFileSync(basedir+'start.html','utf8').includes('lp-referral-link'),'new start URL also has LP CTA');
 assert(manifest.display==='standalone');
@@ -55,4 +63,8 @@ assert.strictEqual(ico.readUInt16LE(2),1);
 assert(index.includes('palleta-favicon-32.png?v=20261014-final'));
 assert(manifest.icons.some(x=>x.sizes==='192x192')&&manifest.icons.some(x=>x.sizes==='512x512'));
 assert(sw.includes('favicon.ico'));
-console.log('PASS: approved Palleta favicon and PWA icon dimensions');
+const lpLogo=fs.readFileSync(basedir+'assets/local-point-logo.webp');
+assert.equal(lpLogo.subarray(0,4).toString('ascii'),'RIFF','authentic Local Point logo WebP file');
+assert.equal(lpLogo.subarray(8,12).toString('ascii'),'WEBP','authentic Local Point logo WebP file');
+assert(lpLogo.length>2000,'Local Point logo not a placeholder');
+console.log('PASS: approved Palleta favicon and PWA icon dimensions; Local Point original WebP');

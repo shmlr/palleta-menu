@@ -151,9 +151,9 @@ function renderResult(message=''){
  for(const slot of p.slots){
    if(slot.day!==day){day=slot.day;h+=`<div class="panel"><h2 class="dayheading">${C.DAYS[day]} · день ${day+1}</h2>`;}
    h+=`<div class="slot"><div class="slot-head"><strong>${C.MEAL_NAMES[slot.meal]}</strong><span>${slot.recipe?esc(slot.recipe.name):slot.mode==='picnic'?'Пикник':slot.people===0?'Дома не едим':'<span class="error">Блюдо не подобрано</span>'}</span></div>`;
-   h+=`<label class="meal-attendance-label">Едят дома <select class="meal-attendance" data-attendance="${esc(slot.key)}" aria-label="${esc(C.MEAL_NAMES[slot.meal])}, день ${slot.day+1}: сколько человек ест дома">`;
+   h+=`<details class="meal-attendance-details" data-attendance-key="${esc(slot.key)}"><summary>${slot.mode==='picnic'?'Пикник · изменить':slot.people===0?'Дома не едят · изменить':'Порций: '+slot.people+' · изменить'}</summary><label class="meal-attendance-label">Кто ест дома? <select class="meal-attendance" data-attendance="${esc(slot.key)}" aria-label="${esc(C.MEAL_NAMES[slot.meal])}, день ${slot.day+1}: сколько человек ест дома">`;
    for(let n=0;n<=prefs.people;n++)h+=`<option value="${n}" ${slot.people===n&&slot.mode!=='picnic'?'selected':''}>${n===0?'Никто дома не ест':n+' чел.'}</option>`;
-   h+=`<option value="picnic" ${slot.mode==='picnic'?'selected':''}>Пикник, корзина отдельно</option></select></label>`;
+   h+=`<option value="picnic" ${slot.mode==='picnic'?'selected':''}>Пикник, корзина отдельно</option></select></label></details>`;
    if(slot.recipe){h+=`<div class="small">${slot.recipe.minutes} мин · редакционный рецепт · ${slot.people} порций</div>`;h+=renderRecipeDetails(slot.recipe);}else if(slot.people===0)h+=`<p class="small">${esc(slot.reason)}. Для этого приёма пищи продукты не добавлены в список.</p>`;else h+=`<p class="small warning">${esc(slot.reason)}. Обновите остатки или снимите ограничения.</p>`;
    const options=slot.people===0?[]:alternativesFor(slot);
    if(options.length){h+=`<div class="grid-actions"><select class="slotselect" aria-label="Заменить ${C.MEAL_NAMES[slot.meal].toLowerCase()} дня ${slot.day+1}" data-slot="${esc(slot.key)}"><option value="">Заменить блюдо…</option>`;
@@ -226,10 +226,10 @@ h+='<p class="muted">* Соль, вода и специи для многих р
  const setAttendance=(data)=>{prefs.attendance=data;checkedItems.clear();renderResult('Количество порций и список покупок пересчитаны.');};
  document.getElementById('attendance-all').onclick=()=>setAttendance({});
  document.getElementById('attendance-weekday').onclick=()=>{
-  const data={};for(let day=0;day<Math.min(5,prefs.days);day++)data[day+'-lunch']=0;setAttendance(data);
+  const data={...prefs.attendance};for(let day=0;day<Math.min(5,prefs.days);day++)data[day+'-lunch']=0;setAttendance(data);
  };
  if(prefs.days===7)document.getElementById('attendance-picnic').onclick=()=>{
-  const data={};for(let day=5;day<7;day++)data[day+'-lunch']='picnic';setAttendance(data);
+  const data={...prefs.attendance};for(let day=5;day<7;day++)data[day+'-lunch']='picnic';setAttendance(data);
  };
  $.querySelectorAll('[data-attendance]').forEach(el=>el.onchange=()=>{
   const key=el.dataset.attendance,v=el.value;

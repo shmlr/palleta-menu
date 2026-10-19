@@ -119,7 +119,15 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
   assert((await page.locator('#app').innerText()).includes('21 из 21 домашних блюд'));
   for(const width of [390,360]){
     await page.setViewportSize({width,height:844});
-    assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1),true,'no horizontal scroll at '+width+'px');
+    const overflow=await page.evaluate(()=>{
+      const vw=window.innerWidth;
+      return {view:vw,scroll:document.documentElement.scrollWidth, offenders:[...document.querySelectorAll('body *')].map(el=>{
+        const rect=el.getBoundingClientRect();
+        return {tag:el.tagName,cls:el.className?.toString().slice(0,100),id:el.id,left:Math.round(rect.left),right:Math.round(rect.right),width:Math.round(rect.width)};
+      }).filter(x=>x.right>vw+1&&x.width>0).slice(0,18)};
+    });
+    if(overflow.scroll>width+1)console.error('MOBILE OVERFLOW DETAIL',JSON.stringify(overflow));
+    assert.equal(overflow.scroll<=width+1,true,'no horizontal scroll at '+width+'px');
     assert(await page.locator('.lp-referral-logo').isVisible(),'Local Point logo at '+width+'px');
     assert(await page.locator('.lp-referral-link').isVisible(),'Local Point CTA at '+width+'px');
     assert(await page.locator('[data-attendance="5-lunch"]').isVisible(),'meal settings usable at '+width+'px');

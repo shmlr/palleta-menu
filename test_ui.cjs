@@ -7,6 +7,7 @@ assert(t.app.innerHTML.includes('utm_content=recipe_'),'individual selected meal
 assert(t.app.innerHTML.includes('Ссылка не гарантирует наличие выбранного блюда'),'no false exact recipe matching');assert(t.app.innerHTML.includes('Дома или купить отдельно'));assert(t.app.innerHTML.includes('shopping-check'));assert(t.app.innerHTML.includes('data-home='));assert(!t.app.innerHTML.includes('вес. позиции'));assert(t.app.innerHTML.includes('Заменить на аналог'));assert(t.app.innerHTML.includes('id="whatsapp"'));assert(t.app.innerHTML.includes('https://wa.me/79882040001?text='));assert(t.app.innerHTML.includes('Отправить список в WhatsApp'));
 assert(t.app.innerHTML.includes('Кто ест дома?'));
 assert.equal((t.app.innerHTML.match(/data-attendance="/g)||[]).length,9,'editable attendance on all 3-day meals');
+assert.equal((t.app.innerHTML.match(/class="meal-attendance-details"/g)||[]).length,9,'disclosure on every meal, without 9 open dropdowns');
 t.document.getElementById('attendance-weekday').click();
 assert(t.app.innerHTML.includes('6 из 6 домашних блюд'),'weekdays home lunch can be skipped');
 assert(t.storage.data.includes('"attendance"'),'attendance must persist in saved plan');
@@ -35,6 +36,9 @@ assert(seven.app.innerHTML.includes('В выходные обед-пикник')
 seven.document.getElementById('attendance-picnic').click();
 assert(seven.app.innerHTML.includes('19 из 19 домашних блюд'),'picnic excludes Saturday/Sunday home lunch');
 assert(seven.app.innerHTML.includes('Пикник: продукты рассчитайте отдельно'));
+seven.document.getElementById('attendance-weekday').click();
+assert(seven.app.innerHTML.includes('14 из 14 домашних блюд'),'weekday and weekend presets must compose, not erase each other');
+assert(seven.app.innerHTML.includes('Пикник: продукты рассчитайте отдельно'),'weekday preset must retain picnic setting');
 seven.document.getElementById('attendance-all').click();
 assert(seven.app.innerHTML.includes('21 из 21 домашних блюд'),'weekend default can be restored');
 console.log('PASS: 7-day home weekends and picnic preset');

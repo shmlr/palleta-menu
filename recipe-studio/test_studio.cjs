@@ -1,0 +1,36 @@
+'use strict';
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+const vm=require('node:vm');
+const ROOT=path.resolve(__dirname,'..');
+const C=require('../core.js');
+const catalog=C.normalize(JSON.parse(fs.readFileSync(path.join(ROOT,'products.json'),'utf8')));
+const recipes=JSON.parse(fs.readFileSync(path.join(ROOT,'recipes.json'),'utf8')).recipes;
+const html=fs.readFileSync(path.join(__dirname,'index.html'),'utf8');
+const source=fs.readFileSync(path.join(__dirname,'app.js'),'utf8');
+assert(recipes.length>=40,'must use existing production editorial catalogue');
+C.checkRecipes(recipes,catalog);
+assert.equal(new Set(recipes.map(x=>x.id)).size,recipes.length,'recipe IDs must be unique');
+assert(html.includes('../core.js')&&html.includes('./app.js'),'scripts linked');
+assert(!html.includes('recipe-studio/recipe_candidates'),'unverified recipe drafts are not published');
+assert(html.includes('name="robots" content="noindex,nofollow"'));
+assert(source.includes('localStorage')&&source.includes('data-fav')&&source.includes('data-cookdays'));
+assert(source.includes('data-repeat')&&source.includes('data-home'));
+assert(source.includes('b.confirmedTotal!==null'),'never present historical prices as live');
+assert(source.includes("brand==='berbena'"),'brand mode exists');
+new vm.Script(source,{filename:'recipe-studio/app.js'});
+for(const days of [3,7]){
+ const p=C.plan(catalog,recipes,{days,people:4,time:999,excl:[]},{atHome:['potato']});
+ assert.equal(p.totalSlots,days*3);
+ assert.equal(p.filled,p.totalSlots);
+ assert.equal(p.basket.confirmedTotal,null,'historical prices cannot form confirmed total');
+ assert(!p.basket.items.some(it=>it.ingredient==='potato'),'pantry items excluded from retail basket');
+ assert(p.basket.homeItems.some(it=>it.ingredient==='potato'));
+ assert(!p.basket.items.some(it=>it.p.sold_in_palleta===false),'meat must not leak into store basket');
+}
+const first=recipes.find(r=>r.meal==='breakfast');
+const pinned=C.plan(catalog,recipes,{days:3,people:4,time:999,excl:[]},{fixed:{'0-breakfast':first.id,'1-breakfast':first.id}});
+assert.equal(pinned.slots[0].recipe.id,first.id);
+assert.equal(pinned.slots[3].recipe.id,first.id);
+console.log('PASS recipe-studio: catalogue, syntax, 3/7 day plan, pantry, double-day and price integrity');

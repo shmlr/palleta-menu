@@ -143,10 +143,12 @@ function renderResult(message=''){
  const p=lastPlan,b=p.basket;
  let h='<button class="home-link" id="home-from-result">← На главную</button><div class="bar"><span style="width:100%"></span></div><h1>Семейное меню на '+prefs.days+' '+(prefs.days===3?'дня':'дней')+'</h1><p class="pill">Клубные цены по карте Паллеты</p><div class="note">Цена «Оптовая, RUB» применяется для держателей клубной карты Паллеты. Без карты цена по клубному тарифу не гарантируется. Итоговый чек подтверждается на кассе.</div>';
  h+=`<p class="muted">Семья: ${prefs.people} чел. · ${p.filled} из ${p.activeSlots} домашних блюд подобрано · ${p.skipped} приёмов пищи вне домашней готовки · ${recipes.length} рецептов</p>`;
- h+='<div class="panel attendance-panel"><h2>Кто ест дома?</h2><p class="small">Укажите количество участников каждого приёма пищи. В будни часть семьи может обедать вне дома. По умолчанию все едят дома, включая выходные. Для пикника продукты отдельно пока не рассчитываются.</p><div class="attendance-actions"><button class="btn secondary" id="attendance-all">Все едят дома</button><button class="btn secondary" id="attendance-weekday">В будни обед вне дома</button>'+(prefs.days===7?'<button class="btn secondary" id="attendance-picnic">В выходные обед-пикник</button>':'')+'</div></div>';
+ h+='<div class="panel attendance-panel"><h2>Кто ест дома?</h2><p class="small">По умолчанию все дома. Меняйте порции у отдельных блюд или используйте быстрые настройки. Продукты на пикник пока не включаются в корзину.</p><div class="attendance-actions"><button class="btn secondary" id="attendance-all">Все едят дома</button><button class="btn secondary" id="attendance-weekday">Пропустить обеды в будни</button>'+(prefs.days===7?'<button class="btn secondary" id="attendance-picnic">В выходные обед-пикник</button>':'')+'</div></div>';
  if(message)h+=`<div class="note">${esc(message)}</div>`;
  const inStock=catalog.products.filter(x=>x.sold_in_palleta!==false&&C.availability(x,catalog)==='in_stock').length;
- h+=`<div class="note"><b>${inStock?'Часть остатков подтверждена':'Данных 1С о текущих остатках пока нет'}.</b> Каталог автоматически подхватывается из products.json при открытии сайта. Последняя сверка: ${esc(explainSource())}. ${inStock?'Товары с устаревшими отметками показываются как неизвестные.':'Выбор предварительный: «остаток уточняется» не означает отсутствие товара в магазине.'}</div>`;
+ h+=inStock
+  ?`<div class="note"><b>Остатки части товаров проверены.</b> Последняя отметка: ${esc(explainSource())}. Наличие остальных товаров уточнит магазин.</div>`
+  :'<div class="note"><b>Актуальные остатки пока не подтверждены.</b> Меню предварительное. Магазин уточнит наличие, цены и возможные замены.</div>';
  let day=-1;
  for(const slot of p.slots){
    if(slot.day!==day){day=slot.day;h+=`<div class="panel"><h2 class="dayheading">${C.DAYS[day]} · день ${day+1}</h2>`;}

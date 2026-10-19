@@ -14,6 +14,7 @@ let view='home',hasSavedPlan=false;
 let checkedItems=new Set(),homeIngredients=new Set();
 const STORE_KEY='palleta-menu-v1';
 const WHATSAPP_NUMBER='79882040001';
+const BERBENA_URL='https://berbena.pro/prorecepty?utm_source=palleta_menu&utm_medium=referral&utm_campaign=recipes_to_berbena';
 function saveState(){
  try{if(!window.localStorage)return;window.localStorage.setItem(STORE_KEY,JSON.stringify({version:2,step,seed,prefs,fixed,chosen,checked:[...checkedItems],home:[...homeIngredients]}));}catch(e){}
 }
@@ -149,6 +150,7 @@ function renderResult(message=''){
    h+='</div>';
    if((p.slots.indexOf(slot)+1)%3===0)h+='</div>';
  }
+ h+='<aside class="panel recipe-referral" id="berbena-recipes"><h2>Хотите больше идей для домашнего меню?</h2><p>В PROРЕЦЕПТЫ на berbena.pro есть отдельная подборка из 120 рецептов, инструкции и настройка порций. Доступ за 590 ₽, один раз, без подписки.</p><a class="btn secondary" href="'+esc(BERBENA_URL)+'" target="_blank" rel="noopener noreferrer" style="display:block;text-align:center;text-decoration:none">Открыть PROРЕЦЕПТЫ на berbena.pro ↗</a><p class="small">Это отдельная библиотека: блюда в Паллете и на berbena.pro могут отличаться.</p></aside>';
  h+='<div class="panel" id="shopping"><h2>Купить в Паллете</h2><p class="small">В сумму и заявку входят только товары Паллеты, которых нет дома. Мясо учитывается отдельно.</p>';
  const currentConfirm=b.confirmedTotal!==null;
  h+=`<div class="value">${currentConfirm?money(b.confirmedTotal):'Полный итог пока неизвестен'}</div>`;

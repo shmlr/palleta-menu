@@ -1,0 +1,42 @@
+'use strict';
+const assert=require('node:assert/strict');
+const {chromium}=require('playwright-core');
+(async()=>{
+ const browser=await chromium.launch({executablePath:process.env.CHROME_BIN||'/usr/bin/google-chrome',headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
+ try{
+  const page=await browser.newPage({viewport:{width:390,height:844}});
+  const errors=[];
+  page.on('pageerror',err=>errors.push(err.message));
+  const resp=await page.goto('http://127.0.0.1:8765/recipe-studio/?brand=palleta',{waitUntil:'networkidle'});
+  assert(resp.ok(),'studio loads');
+  await page.locator('.recipegrid .card').first().waitFor();
+  assert.equal(await page.locator('.recipegrid .card').count(),44,'shows existing 44 recipes');
+  await page.locator('.recipegrid .card [data-fav]').first().click();
+  await page.locator('[data-view="favorites"]').click();
+  assert.equal(await page.locator('.recipegrid .card').count(),1,'favorites filtered');
+  await page.locator('.recipegrid .card [data-open]').first().click();
+  await page.getByRole('heading',{name:'Готовим по шагам'}).waitFor();
+  const amount1=await page.locator('.panel .shopping strong').first().innerText();
+  await page.locator('[data-cookdays="2"]').click();
+  const amount2=await page.locator('.panel .shopping strong').first().innerText();
+  assert.notEqual(amount1,amount2,'two days doubles ingredient quantities');
+  await page.locator('[data-next]').click();
+  assert(await page.getByText('Шаг 2 из').count()||await page.getByText('Шаг 1 из').count(),'guided cook steps visible');
+  await page.locator('[data-back]').click();
+  await page.locator('[data-brand="berbena"]').click();
+  await page.locator('[data-view="plan"]').click();
+  assert.equal(await page.locator('.meal').count(),9,'three-day menu');
+  await page.locator('#days').selectOption('7');
+  assert.equal(await page.locator('.meal').count(),21,'seven-day menu');
+  await page.locator('[data-repeat="0-breakfast"]').click();
+  const breakfast=await page.locator('.meal b').allInnerTexts();
+  assert.equal(breakfast[0],breakfast[3],'repeat recipe on next day');
+  await page.locator('input[data-home="potato"]').check();
+  assert(await page.getByText('Уже есть дома').count()>=1,'pantry appears in ingredient list');
+  await page.locator('[data-brand="palleta"]').click();
+  assert(await page.getByText('Точную стоимость корзины пока назвать нельзя',{exact:false}).count(),'unverified prices are not promised');
+  assert(await page.getByText('Мясо, отсутствующее в ассортименте магазина',{exact:false}).count(),'meat excluded from store basket');
+  assert.deepEqual(errors,[],'no client-side JS errors');
+  console.log('PASS Chrome mobile studio: library, favorites, guided cook, batch, 3/7, pantry, price integrity');
+ }finally{await browser.close();}
+})().catch(e=>{console.error(e);process.exitCode=1;});

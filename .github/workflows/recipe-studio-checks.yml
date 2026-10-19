@@ -1,0 +1,28 @@
+name: Draft recipe studio checks
+on:
+  pull_request:
+    paths:
+      - 'recipe-studio/**'
+      - 'app.js'
+      - 'core.js'
+      - 'recipes.json'
+      - 'products.json'
+      - '.github/workflows/recipe-studio-checks.yml'
+  push:
+    branches: [feature/recipe-experience-v16-draft]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check recipe-studio/app.js
+      - run: node --check app.js
+      - run: node test_core.cjs
+      - run: node test_ui.cjs
+      - run: node recipe-studio/test_studio.cjs

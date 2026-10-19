@@ -142,7 +142,10 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
     assert(await page.locator('[data-attendance-key="5-lunch"] summary').isVisible(),'meal settings accessible at '+width+'px');
     await page.locator('.attendance-panel').scrollIntoViewIfNeeded();
     await page.screenshot({path:shots+'/attendance-'+width+'.png'});
-    await page.locator('[data-attendance-key="0-breakfast"] > summary').click();
+    const firstAttendance=page.locator('[data-attendance-key="0-breakfast"]');
+    if(!(await firstAttendance.evaluate(el=>el.open)))
+      await firstAttendance.locator('summary').click();
+    assert(await firstAttendance.evaluate(el=>el.open),'attendance picker open for visual screenshot');
     await page.locator('.slot').first().screenshot({path:shots+'/meal-'+width+'.png'});
     await page.locator('.lp-referral').screenshot({path:shots+'/local-point-'+width+'.png'});
   }

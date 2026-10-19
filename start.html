@@ -31,6 +31,10 @@
 .meal-attendance:focus-visible{outline:3px solid var(--red);outline-offset:2px}
 @media(max-width:480px){.attendance-actions{flex-direction:column}.attendance-actions .btn{width:100%;white-space:normal}.meal-attendance-label{align-items:stretch;flex-direction:column}.meal-attendance{width:100%}}
 @media print{.attendance-actions,.meal-attendance-label{display:none!important}}
+
+/* Prevent native long recipe options from stretching 360px phone layouts */
+.grid-actions{min-width:0;width:100%}
+.grid-actions .slotselect{flex:1 1 100%;width:100%;min-width:0;max-width:100%;overflow:hidden;text-overflow:ellipsis}
 </style>
 </head>
 <body><main><header><a class="palleta-brand" href="./" aria-label="Паллета — меню на неделю"><img class="palleta-logo" src="./assets/palleta-logo.webp" alt="Паллета — продукты без наценки*"></a><span class="subbrand">Для большой семейной закупки · клубные цены по карте · 7 дней и 3 приёма пищи</span></header>

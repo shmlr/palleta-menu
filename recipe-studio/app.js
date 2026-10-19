@@ -9,7 +9,8 @@
   const KEY='recipe-studio-v1';
   const MEALS=C.MEALS;
   const names=C.MEAL_NAMES;
-  let catalog=null,recipes=[],byId={},view='catalog',brand=new URLSearchParams(location.search).get('brand')==='berbena'?'berbena':'palleta';
+  let catalog=null,recipes=[],byId={},brand=new URLSearchParams(location.search).get('brand')==='berbena'?'berbena':'palleta';
+  let view=brand==='berbena'?'catalog':'plan';
   let prefs={days:3,people:4,time:999,excl:[]},seed=1,fixed={},pantry=new Set(),favorites=new Set();
   let filter='all',search='',onlyFavorites=false,activeId=null,cookIndex=0,cookDays=1,alertText='';
   const allowedBrand=x=>x==='berbena'?'berbena':'palleta';
@@ -30,23 +31,31 @@
     try{localStorage.setItem(KEY,JSON.stringify({days:prefs.days,people:prefs.people,seed,favorites:[...favorites],pantry:[...pantry],fixed}));}catch(e){/* Storage may be disabled. */}
   }
   function navigation(){
+    if(brand==='palleta')return '';
     return '<div class="tabs" aria-label="Разделы">'+
       '<button type="button" data-view="catalog" aria-pressed="'+(view==='catalog')+'">Рецепты</button>'+
-      '<button type="button" data-view="plan" aria-pressed="'+(view==='plan')+'">Меню на неделю</button>'+
       '<button type="button" data-view="favorites" aria-pressed="'+(view==='favorites')+'">Избранное ('+favorites.size+')</button>'+
       '</div>';
+  }
+  function kcalBadge(r){
+    const nutrition=window.BerbenaNutrition?.estimate(r,catalog);
+    return nutrition?.kcal!==null&&Number.isFinite(nutrition?.kcal)?
+      '<span class="pill">[Unverified] ≈ '+nutrition.kcal+' ккал/порция</span>':
+      '<span class="pill">Калорийность не рассчитана</span>';
   }
   function render(){
     document.body.classList.toggle('berbena',brand==='berbena');
     document.querySelectorAll('[data-brand]').forEach(el=>el.setAttribute('aria-pressed',String(el.dataset.brand===brand)));
-    if(view==='cook')return renderCook();
+    if(brand==='palleta')view='plan';
+    else if(view==='plan')view='catalog';
+    if(view==='cook'&&brand==='berbena')return renderCook();
     let h='<section class="hero"><h1>'+(brand==='berbena'?'Готовить дома проще':'Что приготовить на этой неделе?')+'</h1><p>'+
-      (brand==='berbena'?'Прототип интерфейса для PROРЕЦЕПТОВ. Здесь только общие редакционные рецепты, не закрытый платный каталог.':
-      'Рецепты, семейное меню и предварительный список покупок. Клубные цены и наличие должны быть подтверждены магазином.')+
-      '</p><div class="actions"><a class="mini secondary" href="../start.html">← Основное меню Паллеты</a></div></section>';
+      (brand==='berbena'?'Рецепты, ориентировочные калории и готовка по шагам. Платный каталог PROРЕЦЕПТОВ сюда пока не загружен.':
+      'Меню на 3 или 7 дней, продукты дома и предварительный список покупок. Цены и наличие подтверждает магазин.')+
+      '</p>'+(brand==='palleta'?'<div class="actions"><a class="mini secondary" href="../start.html">← Основное меню Паллеты</a></div>':'')+'</section>';
     h+=navigation();
     if(alertText){h+='<div role="status" class="note">'+esc(alertText)+'</div>';alertText='';}
-    if(view==='plan')h+=planHtml();
+    if(brand==='palleta')h+=planHtml();
     else h+=libraryHtml();
     root.innerHTML=h;save();
     if(view==='catalog'||view==='favorites')drawCards();
@@ -56,7 +65,7 @@
       '<div class="controls"><label>Название блюда<input id="search" type="search" autocomplete="off" placeholder="Например, суп или картофель" value="'+esc(search)+'"></label>'+
       '<label>Тип блюда<select id="meal-filter"><option value="all">Все блюда</option>'+
       MEALS.map(m=>'<option value="'+m+'"'+(filter===m?' selected':'')+'>'+esc(names[m])+'</option>').join('')+
-      '</select></label></div><p class="muted">В базе '+recipes.length+' редакционных рецепта. Состав, порции и аллергены требуют индивидуальной проверки.</p>'+
+      '</select></label></div><p class="muted">В базе '+recipes.length+' редакционных рецепта. [Unverified] Калорийность ориентировочная, без проверки точной номенклатуры, рецептур и аллергенов.</p>'+
       '<div id="cards" class="recipegrid"></div></section>';
   }
   function drawCards(){
@@ -69,10 +78,9 @@
     cards.innerHTML=ordered.map(r=>
       '<article class="card"><div class="recipe-title"><h3>'+esc(r.name)+'</h3>'+
       '<button class="heart" data-fav="'+esc(r.id)+'" type="button" aria-label="'+(favorites.has(r.id)?'Удалить из избранного':'Добавить в избранное')+'" aria-pressed="'+favorites.has(r.id)+'">'+(favorites.has(r.id)?'♥':'♡')+'</button></div>'+
-      '<div class="recipe-meta">'+esc(names[r.meal])+' · '+r.minutes+' мин · '+Object.keys(r.ingredients_per_person).length+' ингредиентов</div>'+
+      '<div class="recipe-meta">'+esc(names[r.meal])+' · '+r.minutes+' мин · '+Object.keys(r.ingredients_per_person).length+' ингредиентов</div>'+kcalBadge(r)+
       '<p class="muted">'+esc(Object.keys(r.ingredients_per_person).map(id=>catalog.byIngredient[id]?.name||id).slice(0,5).join(', '))+'</p>'+
-      '<div class="actions"><button class="mini" data-open="'+esc(r.id)+'" type="button">Готовить</button>'+
-      '<button class="mini secondary" data-add="'+esc(r.id)+'" type="button">В меню</button></div></article>'
+      '<div class="actions"><button class="mini" data-open="'+esc(r.id)+'" type="button">Готовить по шагам</button></div></article>'
     ).join('')||'<p class="muted">Подходящие рецепты не найдены. Измените запрос или фильтр.</p>';
   }
   function getPlan(){return C.plan(catalog,recipes,prefs,{seed,fixed,atHome:[...pantry]});}
@@ -100,8 +108,6 @@
         (s.recipe?'<div class="muted">'+s.recipe.minutes+' мин</div>':'<div class="muted">'+esc(s.reason)+'</div>')+'</div>';
       h+='<div class="row">';
       if(s.recipe){
-        h+='<button type="button" class="mini secondary" data-open="'+esc(s.recipe.id)+'">Готовить</button>'+
-          '<button type="button" class="mini secondary" data-fav="'+esc(s.recipe.id)+'" aria-pressed="'+favorites.has(s.recipe.id)+'">'+(favorites.has(s.recipe.id)?'♥ В избранном':'♡ Избранное')+'</button>';
         if(day<prefs.days-1)h+='<button type="button" class="mini secondary" data-repeat="'+esc(s.key)+'">Повторить завтра</button>';
       }
       h+='</div>';
@@ -121,35 +127,38 @@
       '<div class="pantry">'+catalog.ingredients.map(i=>'<label><input type="checkbox" data-home="'+esc(i.id)+'"'+(pantry.has(i.id)?' checked':'')+'><span>'+esc(i.name)+'</span></label>').join('')+'</div></section>';
   }
   function basketHtml(p){
-    let h='<section class="panel"><h2>'+(brand==='berbena'?'Ингредиенты на весь период':'Предварительный список покупок')+'</h2>';
-    if(brand==='berbena'){
-      const amounts=C.aggregate(p.slots.map(s=>s.recipe),prefs.people);
-      for(const [id,n] of Object.entries(amounts)){const ing=catalog.byIngredient[id];h+='<div class="shopping"><div><strong>'+esc(ing?.name||id)+'</strong><div class="muted">'+(pantry.has(id)?'Уже есть дома':'Подготовить или купить')+'</div></div><strong>'+qty(n)+' '+esc(ing?.unit||'')+'</strong></div>';}
-      h+='<p class="muted">Цены и магазинные остатки здесь намеренно не показываются.</p>';
-    }else{
-      const b=p.basket;
-      for(const it of b.items)h+='<div class="shopping"><div><strong>'+esc(it.ing.name)+'</strong><div class="muted">'+esc(it.p.name)+' · '+(it.stock==='in_stock'?'остаток подтверждён':'остаток уточняется')+'</div></div><strong>'+qty(it.quantity)+' '+esc(it.p.unit)+'</strong></div>';
-      if(b.externalItems.length){h+='<h3>Дома или купить отдельно</h3>';for(const it of b.externalItems)h+='<div class="shopping"><div>'+esc(it.ing.name)+'</div><strong>'+qty(it.quantity)+' '+esc(it.p.unit)+'</strong></div>';}
-      if(b.homeItems.length){h+='<h3>Уже есть дома</h3>';for(const it of b.homeItems)h+='<div class="shopping"><div>'+esc(it.ing.name)+'</div><strong>'+qty(it.quantity)+' '+esc(it.ing.unit)+'</strong></div>';}
-      if(b.confirmedTotal!==null)h+='<p class="amount">Сумма по подтверждённым клубным ценам и остаткам: '+price(b.confirmedTotal)+'</p>';
-      else h+='<div class="note">Точную стоимость корзины пока назвать нельзя: нужны свежие клубные цены и остатки из 1С. Это не онлайн-заказ и не резерв.</div>';
-      if(b.shortages.length)h+='<div class="note">Часть ингредиентов не обеспечена подтверждённым ассортиментом: '+esc(b.shortages.map(x=>x.name).join(', '))+'</div>';
-      h+='<p class="muted">Мясо, отсутствующее в ассортименте магазина, не включается в магазинную корзину.</p>';
+    const b=p.basket;
+    let h='<section class="panel"><h2>Предварительный список покупок</h2>';
+    for(const it of b.items){
+      h+='<div class="shopping"><div><strong>'+esc(it.ing.name)+'</strong><div class="muted">'+esc(it.p.name)+' · '+
+      (it.stock==='in_stock'?'остаток подтверждён':'остаток уточняется')+'</div></div><strong>'+qty(it.quantity)+' '+esc(it.p.unit)+'</strong></div>';
     }
+    if(b.externalItems.length){h+='<h3>Дома или купить отдельно</h3>';for(const it of b.externalItems)h+='<div class="shopping"><div>'+esc(it.ing.name)+'</div><strong>'+qty(it.quantity)+' '+esc(it.p.unit)+'</strong></div>';}
+    if(b.homeItems.length){h+='<h3>Уже есть дома</h3>';for(const it of b.homeItems)h+='<div class="shopping"><div>'+esc(it.ing.name)+'</div><strong>'+qty(it.quantity)+' '+esc(it.ing.unit)+'</strong></div>';}
+    if(b.confirmedTotal!==null)h+='<p class="amount">Сумма по подтверждённым клубным ценам и остаткам: '+price(b.confirmedTotal)+'</p>';
+    else h+='<div class="note">Точную стоимость корзины пока назвать нельзя: нужны свежие клубные цены и остатки из 1С. Это не онлайн-заказ и не резерв.</div>';
+    if(b.shortages.length)h+='<div class="note">Часть ингредиентов не обеспечена подтверждённым ассортиментом: '+esc(b.shortages.map(x=>x.name).join(', '))+'</div>';
+    h+='<p class="muted">Мясо, отсутствующее в ассортименте магазина, не включается в магазинную корзину.</p>';
     return h+'<div class="actions"><button type="button" class="mini secondary" data-print="1">Распечатать</button></div></section>';
   }
   function renderCook(){
     const r=byId[activeId];if(!r){view='catalog';render();return;}
     const total=r.steps.length;
     cookIndex=Math.max(0,Math.min(total-1,cookIndex));
-    const people=prefs.people* cookDays;
+    const people=prefs.people*cookDays;
+    const n=window.BerbenaNutrition?.estimate(r,catalog);
+    const hasKcal=Number.isFinite(n?.kcal);
+    const kcalHtml=hasKcal?'<section class="panel" aria-label="Калорийность"><h2>[Unverified] ≈ '+n.kcal+' ккал на порцию</h2>'+ 
+      '<p class="muted">≈ '+(Math.round(n.unrounded_kcal*people/10)*10)+' ккал на весь объём ('+people+' порц.). Расчёт по типовым исходным ингредиентам, <strong>не подтверждён</strong> для конкретных продуктов и готового блюда. Не является пищевой маркировкой или медицинской рекомендацией.</p></section>':
+      '<div class="note">Калорийность неизвестна: для одного или нескольких ингредиентов нет совместимых данных.</div>';
     const h='<div class="actions"><button type="button" class="mini secondary" data-back="1">← Вернуться</button></div>'+
       '<section class="hero"><div class="pill">'+esc(names[r.meal])+' · '+r.minutes+' мин</div><h1>'+esc(r.name)+'</h1>'+
-      '<p>Порции: '+prefs.people+' чел. × '+cookDays+' '+(cookDays===1?'день':'дня')+'</p>'+
+      '<p>Порции: '+prefs.people+' чел. × '+cookDays+' '+(cookDays===1?'день':'дня')+'</p>'+ 
+      '<div class="controls"><label>Человек<select id="cook-people">'+[1,2,3,4,5,6].map(x=>'<option value="'+x+'"'+(prefs.people===x?' selected':'')+'>'+x+'</option>').join('')+'</select></label></div>'+
       '<div class="actions"><button type="button" class="mini secondary" data-cookdays="1" aria-pressed="'+(cookDays===1)+'">На один день</button>'+
       '<button type="button" class="mini secondary" data-cookdays="2" aria-pressed="'+(cookDays===2)+'">На два дня</button></div></section>'+
       (cookDays===2?'<div class="note">Количество продуктов удвоено. Срок и условия безопасного хранения зависят от блюда. Не оставляйте готовую еду при комнатной температуре и проверяйте правила охлаждения и разогрева.</div>':'')+
-      '<section class="panel"><h2>Продукты</h2>'+
+      kcalHtml+'<section class="panel"><h2>Продукты</h2>'+
       Object.entries(r.ingredients_per_person).map(([id,n])=>'<div class="shopping"><div>'+esc(catalog.byIngredient[id]?.name||id)+'</div><strong>'+qty(n*people)+' '+esc(catalog.byIngredient[id]?.unit||'')+'</strong></div>').join('')+
       '<p class="muted">'+esc(r.pantry_note||'Дополнительные соль, вода и специи могут не входить в список.')+'</p></section>'+
       '<section class="panel"><h2>Готовим по шагам</h2><div class="muted">Шаг '+(cookIndex+1)+' из '+total+'</div>'+
@@ -160,13 +169,12 @@
       '</section><p class="muted">Рецепты редакционные и требуют проверки пропорций и аллергенов перед приготовлением.</p>';
     root.innerHTML=h;
   }
-  document.querySelectorAll('[data-brand]').forEach(button=>button.onclick=()=>{brand=allowedBrand(button.dataset.brand);render();});
+  document.querySelectorAll('[data-brand]').forEach(button=>button.onclick=()=>{brand=allowedBrand(button.dataset.brand);view=brand==='berbena'?'catalog':'plan';activeId=null;const url=new URL(location.href);url.searchParams.set('brand',brand);history.replaceState(null,'',url);render();});
   root.addEventListener('click',e=>{
     const el=e.target.closest('button');if(!el||!root.contains(el))return;
     if(el.dataset.view){view=el.dataset.view;render();return;}
     if(el.dataset.fav){const id=el.dataset.fav;if(favorites.has(id))favorites.delete(id);else favorites.add(id);save();render();return;}
-    if(el.dataset.open){activeId=el.dataset.open;returnView=view;view='cook';cookIndex=0;cookDays=1;render();return;}
-    if(el.dataset.add){const r=byId[el.dataset.add];if(r){const key='0-'+r.meal;if(checkFixed(key,r.id)){view='plan';alertText='Блюдо добавлено на первый день выбранного меню.';}render();}return;}
+    if(el.dataset.open&&brand==='berbena'){activeId=el.dataset.open;returnView=view;view='cook';cookIndex=0;cookDays=1;render();return;}
     if(el.dataset.repeat){
       const [day,meal]=el.dataset.repeat.split('-');const s=getPlan().slots.find(x=>x.key===el.dataset.repeat);
       if(s?.recipe&&Number(day)<prefs.days-1){const key=(Number(day)+1)+'-'+meal;if(checkFixed(key,s.recipe.id))alertText='Блюдо повторено на следующий день. Для приготовления за один раз проверьте безопасное хранение.';render();}return;
@@ -183,7 +191,7 @@
     const el=e.target;
     if(el.id==='meal-filter'){filter=el.value;drawCards();return;}
     if(el.id==='days'){prefs.days=Number(el.value)===7?7:3;fixed={};render();return;}
-    if(el.id==='people'){prefs.people=Math.max(1,Math.min(6,Number(el.value)||4));render();return;}
+    if(el.id==='people'||el.id==='cook-people'){prefs.people=Math.max(1,Math.min(6,Number(el.value)||4));render();return;}
     if(el.dataset.home){if(el.checked)pantry.add(el.dataset.home);else pantry.delete(el.dataset.home);render();return;}
     if(el.dataset.slot&&el.value){checkFixed(el.dataset.slot,el.value);render();return;}
   });

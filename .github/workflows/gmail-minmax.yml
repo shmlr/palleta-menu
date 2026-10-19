@@ -44,8 +44,21 @@ jobs:
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
-      - name: Run application QA
+      - name: Check for outstanding automated data PR
+        id: pending
         if: steps.diff.outputs.changed == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          count="$(gh pr list --base main --state open --json headRefName --jq '[.[] | select(.headRefName | startswith("automation/minmax-"))] | length')"
+          if [ "$count" -gt 0 ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::An automated club-price PR is already open; skip generating a duplicate. Review existing PR before the next data release."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Run application QA
+        if: steps.diff.outputs.changed == 'true' && steps.pending.outputs.exists != 'true'
         run: |
           node test_core.cjs
           node test_ui.cjs
@@ -53,7 +66,7 @@ jobs:
           python3 -m http.server 8765 --bind 127.0.0.1 >/tmp/palleta-http.log 2>&1 &
           node e2e_smoke.cjs
       - name: Create guarded price PR
-        if: steps.diff.outputs.changed == 'true'
+        if: steps.diff.outputs.changed == 'true' && steps.pending.outputs.exists != 'true'
         shell: bash
         run: |
           set -euo pipefail

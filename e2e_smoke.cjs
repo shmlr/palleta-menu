@@ -59,6 +59,7 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
   await page.locator('[data-attendance="0-lunch"]').selectOption('2');
   assert((await page.locator('[data-attendance="0-lunch"]').inputValue())==='2');
   assert((await page.locator('.slot').first().innerText()).length>10);
+  await page.locator('[data-attendance-key="0-lunch"] > summary').click();
   await page.locator('[data-attendance="0-lunch"]').selectOption('4');
   assert.equal(await page.locator('[data-attendance="0-lunch"]').inputValue(),'4');
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1),true,'no horizontal scroll after attendance changes at 390px');
@@ -122,6 +123,9 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
   assert((await page.locator('#app').innerText()).includes('14 из 14 домашних блюд'),'weekday and picnic presets compose');
   await page.getByRole('button',{name:'Все едят дома'}).click();
   assert((await page.locator('#app').innerText()).includes('21 из 21 домашних блюд'));
+  const fs=require('node:fs');
+  const shots='/tmp/palleta-mobile-preview';
+  fs.mkdirSync(shots,{recursive:true});
   for(const width of [390,360]){
     await page.setViewportSize({width,height:844});
     const overflow=await page.evaluate(()=>{
@@ -136,6 +140,9 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
     assert(await page.locator('.lp-referral-logo').isVisible(),'Local Point logo at '+width+'px');
     assert(await page.locator('.lp-referral-link').isVisible(),'Local Point CTA at '+width+'px');
     assert(await page.locator('[data-attendance-key="5-lunch"] summary').isVisible(),'meal settings accessible at '+width+'px');
+    await page.locator('.attendance-panel').scrollIntoViewIfNeeded();
+    await page.screenshot({path:shots+'/attendance-'+width+'.png'});
+    await page.locator('.lp-referral').screenshot({path:shots+'/local-point-'+width+'.png'});
   }
 
   await page.screenshot({path:'/tmp/palleta-home-test.png',fullPage:true});

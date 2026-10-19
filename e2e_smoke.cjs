@@ -16,6 +16,13 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
   let response=await page.goto(entry,{waitUntil:'networkidle',timeout:30000});
   assert(response?.ok(),'start.html must return success');
   await page.getByRole('heading',{name:'Что приготовить на этой неделе?'}).waitFor();
+  const lpImg=page.locator('.lp-referral-logo');
+  assert(await lpImg.isVisible(),'original Local Point logo visible on main entry');
+  assert.equal(await lpImg.getAttribute('src'),'./assets/local-point-logo.webp');
+  assert(await lpImg.evaluate(img=>img.complete&&img.naturalWidth>0),'Local Point logo loads in real Chrome');
+  assert.equal(await page.locator('.lp-referral-phone').getAttribute('href'),'tel:+79637940001','telephone is tappable');
+  assert((await page.locator('.lp-referral-phone').innerText()).includes('+7 963 794-00-01'),'phone appears in readable format');
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1),true,'LP block does not create mobile horizontal overflow');
   const localPoint=await page.locator('.lp-referral-link').getAttribute('href');
   assert(localPoint.startsWith('https://wa.me/79637940001?text='),'verified Local Point contact');
   assert(new URL(localPoint).searchParams.get('text').includes('Паллета'),'LP source tag inside message');
@@ -44,6 +51,19 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
   assert(recipeLink.includes('utm_content=recipe_'),'recipe source id passed without implying exact match');
   const slots=await page.locator('.slot').count();
   assert.equal(slots,9,'default 3 days must render 9 planned meals');
+  // Family attendance must not shift the main purchase flow off-screen.
+  assert(await page.locator('.attendance-panel').isVisible(),'attendance controls shown alongside menu');
+  assert.equal(await page.locator('[data-attendance]').count(),9);
+  assert.equal(await page.locator('details.meal-attendance-details[open]').count(),0,'portion selectors closed by default');
+  await page.locator('[data-attendance-key="0-lunch"] > summary').click();
+  await page.locator('[data-attendance="0-lunch"]').selectOption('2');
+  assert((await page.locator('[data-attendance="0-lunch"]').inputValue())==='2');
+  assert((await page.locator('.slot').first().innerText()).length>10);
+  await page.locator('[data-attendance-key="0-lunch"] > summary').click();
+  await page.locator('[data-attendance="0-lunch"]').selectOption('4');
+  assert.equal(await page.locator('[data-attendance="0-lunch"]').inputValue(),'4');
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1),true,'no horizontal scroll after attendance changes at 390px');
+
   await page.locator('[data-slot="0-lunch"]').selectOption('chicken_soup');
   assert(await page.locator('#outside-store').isVisible(),'external ingredients should have a separate block');
   const wa=page.locator('#whatsapp');
@@ -78,6 +98,9 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
   // The root path must also display home, including after saved browsing session.
   response=await page.goto(root,{waitUntil:'networkidle'});
   assert(response?.ok());
+  assert(await page.locator('.lp-referral-logo').isVisible(),'original Local Point logo visible on root homepage');
+  assert.equal(await page.locator('.lp-referral-phone').getAttribute('href'),'tel:+79637940001','root phone links to same LP number');
+  assert.equal(await page.locator('.lp-referral-link').count(),1,'root page has one LP WhatsApp action');
   await page.getByRole('heading',{name:'Что приготовить на этой неделе?'}).waitFor();
   assert(await page.getByRole('button',{name:'Продолжить сохранённое меню'}).isVisible());
   await page.getByRole('button',{name:'Составить меню'}).click();
@@ -91,6 +114,42 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
   await page.getByRole('heading',{name:'Семейное меню на 7 дней'}).waitFor();
   assert.equal(await page.locator('.slot').count(),21);
   assert.equal(await page.locator('#at-home').count(),0,'new menu clears home flags');
+  await page.getByRole('button',{name:'В выходные обед-пикник'}).click();
+  assert((await page.locator('[data-attendance="5-lunch"]').inputValue())==='picnic');
+  assert((await page.locator('[data-attendance="6-lunch"]').inputValue())==='picnic');
+  assert((await page.locator('#app').innerText()).includes('19 из 19 домашних блюд'),'weekend picnic excludes cooking without inventing food');
+  await page.getByRole('button',{name:'Пропустить обеды в будни'}).click();
+  assert((await page.locator('[data-attendance="5-lunch"]').inputValue())==='picnic','weekday preset must retain picnic');
+  assert((await page.locator('#app').innerText()).includes('14 из 14 домашних блюд'),'weekday and picnic presets compose');
+  await page.getByRole('button',{name:'Все едят дома'}).click();
+  assert((await page.locator('#app').innerText()).includes('21 из 21 домашних блюд'));
+  const fs=require('node:fs');
+  const shots='/tmp/palleta-mobile-preview';
+  fs.mkdirSync(shots,{recursive:true});
+  for(const width of [390,360]){
+    await page.setViewportSize({width,height:844});
+    const overflow=await page.evaluate(()=>{
+      const vw=window.innerWidth;
+      return {view:vw,scroll:document.documentElement.scrollWidth, offenders:[...document.querySelectorAll('body *')].map(el=>{
+        const rect=el.getBoundingClientRect();
+        return {tag:el.tagName,cls:el.className?.toString().slice(0,100),id:el.id,left:Math.round(rect.left),right:Math.round(rect.right),width:Math.round(rect.width)};
+      }).filter(x=>x.right>vw+1&&x.width>0).slice(0,18)};
+    });
+    if(overflow.scroll>width+1)console.error('MOBILE OVERFLOW DETAIL',JSON.stringify(overflow));
+    assert.equal(overflow.scroll<=width+1,true,'no horizontal scroll at '+width+'px');
+    assert(await page.locator('.lp-referral-logo').isVisible(),'Local Point logo at '+width+'px');
+    assert(await page.locator('.lp-referral-link').isVisible(),'Local Point CTA at '+width+'px');
+    assert(await page.locator('[data-attendance-key="5-lunch"] summary').isVisible(),'meal settings accessible at '+width+'px');
+    await page.locator('.attendance-panel').scrollIntoViewIfNeeded();
+    await page.screenshot({path:shots+'/attendance-'+width+'.png'});
+    const firstAttendance=page.locator('[data-attendance-key="0-breakfast"]');
+    if(!(await firstAttendance.evaluate(el=>el.open)))
+      await firstAttendance.locator('summary').click();
+    assert(await firstAttendance.evaluate(el=>el.open),'attendance picker open for visual screenshot');
+    await page.locator('.slot').first().screenshot({path:shots+'/meal-'+width+'.png'});
+    await page.locator('.lp-referral').screenshot({path:shots+'/local-point-'+width+'.png'});
+  }
+
   await page.screenshot({path:'/tmp/palleta-home-test.png',fullPage:true});
   assert.deepEqual(appErrors,[],'no client-side JS errors');
   console.log('PASS real Chrome: 3/7-day planner, pantry exclusions, saved pantry, WhatsApp');

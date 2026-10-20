@@ -204,28 +204,33 @@ function renderResult(message=''){
    if((p.slots.indexOf(slot)+1)%3===0)h+='</div>';
  }
  h+='<div class="panel" id="shopping"><h2>Купить в Паллете</h2><p class="small">В сумму и заявку входят только товары Паллеты, которых нет дома. Мясо учитывается отдельно.</p>';
- const currentConfirm=b.confirmedTotal!==null;
- h+=`<div class="value">${currentConfirm?money(b.confirmedTotal):'Полный итог пока неизвестен'}</div>`;
+ const order=orderPreview(lastPlan),currentConfirm=order.confirmed!==null;
+ h+=`<div class="value">${currentConfirm?money(order.confirmed):'Полный итог пока неизвестен'}</div>`;
  h+=`<p class="muted">${currentConfirm?'Все позиции покрыты свежими остатками и клубными ценами из УТ 11. Расчёт действует при предъявлении карты; чек подтвердит магазин.':'Клубный итог пока неизвестен: нужны свежие подтверждённые цены по карте и остатки. Исторические розничные цены не учитываются.'}</p>`;
  h+=`<p class="small">Позиции: ${b.items.length} · Без свежего остатка: ${b.items.filter(x=>x.stock!=='in_stock').length} · Без свежей цены: ${b.items.filter(x=>!x.priceCurrent).length} · Нехватка: ${b.shortages.length}</p>`;
- const known=b.items.filter(it=>refClubCost(it)!==null&&!it.priceCurrent);
- if(known.length){const estimate=known.reduce((sum,it)=>sum+refClubCost(it),0);h+=`<div class="note"><b>Справочная сумма по ${known.length} из ${b.items.length} позиций: ≈ ${money(estimate)}</b><p class="small">Только товары с известной клубной ценой на дату выгрузки. Это не полная стоимость корзины и не подтверждённый заказ.</p></div>`;}
+ const known=order.references.filter(it=>!it.priceCurrent);
+ if(known.length){const estimate=known.reduce((sum,it)=>sum+refClubCost(it),0);h+=`<div class="note"><b>Справочная сумма по ${known.length} из ${order.pending.length} позиций без пожеланий: ≈ ${money(estimate)}</b><p class="small">Только товары с известной клубной ценой на дату выгрузки. Это не полная стоимость корзины и не подтверждённый заказ.</p></div>`;}
  if(p.filled<p.activeSlots)h+=`<p class="error">${p.activeSlots-p.filled} блюд не подобрано: в каталоге нет подтверждённых подходящих сочетаний при ваших ограничениях.</p>`;
- if(prefs.budget){h+=`<p class="small">Бюджет: ${money(prefs.budget)}. ${currentConfirm?b.confirmedTotal<=prefs.budget?'Собранная корзина укладывается в бюджет по данным последней выгрузки.':'Внимание: корзина превышает выбранный бюджет.':'Проверка бюджета заблокирована неполными данными.'}</p>`;}
+ h+=`<p class="small" id="budget-progress">${esc(budgetStatus(lastPlan))}</p>`;
  h+='</div><div class="panel"><h2>Список покупок в Паллете <span class="pill" id="check-count">'+b.items.filter(x=>checkedItems.has(x.p.id)).length+' / '+b.items.length+' куплено</span></h2><p class="muted">Отметка «Куплено» исключает товар из WhatsApp-заявки и копируемого списка. «Уже есть дома» убирает ингредиент из расчёта корзины. Значок ≈ означает справочную цену.</p><p class="small" id="purchase-pending">В заявку: '+pendingBasketItems(lastPlan).length+' из '+b.items.length+' позиций.</p>';
  for(const it of b.items){const opts=(it.ing.product_ids||[]).map(id=>catalog.byProduct[id]).filter(x=>C.validProduct(x,it.ing)&&C.availability(x,catalog)!=='out_of_stock');
- const ref=refClubCost(it);
- h+=`<div class="product"><div class="product-head"><label class="check-row"><input class="shopping-check" type="checkbox" data-check="${esc(it.p.id)}" ${checkedItems.has(it.p.id)?'checked':''} aria-label="Куплено: ${esc(it.p.name)}"><span class="basket-name">${esc(it.ing.name)}</span></label><span class="amount">${it.priceCurrent?money(it.cost):ref!==null?'≈ '+money(ref):'цену уточнить'}</span></div>`;
+ const ref=refClubCost(it),wish=wishFor(it);
+ h+=`<div class="product"><div class="product-head"><label class="check-row"><input class="shopping-check" type="checkbox" data-check="${esc(it.p.id)}" ${checkedItems.has(it.p.id)?'checked':''} aria-label="Куплено: ${esc(it.p.name)}"><span class="basket-name">${esc(it.ing.name)}</span></label><span class="amount">${wish?'цену уточнить':it.priceCurrent?money(it.cost):ref!==null?'≈ '+money(ref):'цену уточнить'}</span></div>`;
  const qty=it.p.pricing_mode==='by_pack'?`${it.packs} уп. по ${qfmt(it.p.pack_size)} ${esc(it.p.unit)} · всего ${qfmt(it.quantity)} ${esc(it.p.unit)}`:`${qfmt(it.quantity)} ${esc(it.p.unit)}`;
  h+=`<p class="small">${esc(it.p.name)} · ${qty} · ${esc(STATUS[it.stock])}</p>`;
  h+=`<label class="small home-checkbox"><input type="checkbox" data-home="${esc(it.ing.id)}"> Уже есть дома — убрать из заявки</label>`;
  
- if(it.priceKnown&&!it.priceCurrent)h+=`<p class="small">Последняя известная клубная стоимость ${money(it.cost)} · не текущая цена</p>`;
- if(ref!==null&&!it.priceCurrent){h+=`<p class="small">Клубная цена на ${esc(humanDate(it.p.price_as_of))}: ${money(it.p.price)} за ${it.p.pricing_mode==='by_pack'?'упаковку':esc(it.p.unit)}. Справочно, не текущая цена.</p>`;}
+ if(wish)h+=`<p class="small warning">Пожелание: ${esc(wish)}. Показанная фасовка используется только для рецепта. Цену и количество уточнит магазин.</p>`;
+ if(!wish&&it.priceKnown&&!it.priceCurrent)h+=`<p class="small">Последняя известная клубная стоимость ${money(it.cost)} · не текущая цена</p>`;
+ if(!wish&&ref!==null&&!it.priceCurrent){h+=`<p class="small">Клубная цена на ${esc(humanDate(it.p.price_as_of))}: ${money(it.p.price)} за ${it.p.pricing_mode==='by_pack'?'упаковку':esc(it.p.unit)}. Справочно, не текущая цена.</p>`;}
  if(opts.length>1){h+=`<label class="small" for="select-${esc(it.ingredient)}">Заменить на аналог или другую фасовку</label><select id="select-${esc(it.ingredient)}" data-ingredient="${esc(it.ingredient)}">`;
  for(const op of opts)h+=`<option value="${esc(op.id)}" ${op.id===it.p.id?'selected':''}>${esc(op.name)} · ${esc(STATUS[C.availability(op,catalog)])}</option>`;
  h+='</select>';
  }
+ const suggested=(it.ing.product_ids||[]).map(id=>catalog.byProduct[id]).filter(x=>x&&x.id!==it.p.id&&x.sold_in_palleta!==false);
+ h+=`<label class="small" for="wish-${esc(it.ingredient)}">Марка, сорт или фасовка по желанию (магазин подтвердит)</label><input id="wish-${esc(it.ingredient)}" data-wish="${esc(it.ingredient)}" type="text" maxlength="90" list="wish-list-${esc(it.ingredient)}" autocomplete="off" value="${esc(wish)}" placeholder="Как в списке или укажите свой вариант" style="display:block;width:100%;min-height:44px;padding:10px 12px;border:1px solid #c8d3df;border-radius:10px;font-size:16px"><datalist id="wish-list-${esc(it.ingredient)}">`;
+ for(const alt of suggested)h+=`<option value="${esc(alt.name)}"></option>`;
+ h+='</datalist><p class="small">Пожелание заменяет товар в заявке, но не подставляет неподтверждённую цену или число упаковок.</p>';
  h+='</div>';
  }
  if(!b.items.length)h+='<p class="small">По этому меню нет товаров для покупки в Паллете.</p>';
@@ -278,21 +283,23 @@ h+='<p class="muted">* Соль, вода и специи для многих р
   if(el.checked)homeIngredients.add(el.dataset.home);else homeIngredients.delete(el.dataset.home);
   renderResult(el.checked?'Продукт уже есть дома, поэтому исключён из заявки.':'Продукт возвращён в покупки.');
  });
+ $.querySelectorAll('[data-wish]').forEach(el=>{
+  el.oninput=()=>{const id=el.dataset.wish,value=safeWish(el.value);if(value)purchaseWishes[id]=value;else delete purchaseWishes[id];saveState();updateOrderLink();};
+  el.onchange=()=>renderResult('Пожелание сохранено. Цену и число упаковок подтвердит магазин.');
+ });
  $.querySelectorAll('[data-check]').forEach(el=>el.onchange=()=>{
   if(el.checked)checkedItems.add(el.dataset.check);else checkedItems.delete(el.dataset.check);
   saveState();
   const count=document.getElementById('check-count');
   if(count)count.textContent=b.items.filter(x=>checkedItems.has(x.p.id)).length+' / '+b.items.length+' куплено';
-  const pending=pendingBasketItems(lastPlan),wa=document.getElementById('whatsapp'),note=document.getElementById('purchase-pending');
-  if(note)note.textContent='В заявку: '+pending.length+' из '+b.items.length+' позиций.';
-  if(wa){if(pending.length){wa.setAttribute('href',whatsappHref(lastPlan));wa.removeAttribute('aria-disabled');wa.textContent='Отправить список в WhatsApp ↗';}else{wa.removeAttribute('href');wa.setAttribute('aria-disabled','true');wa.textContent='Все товары отмечены как купленные';}}
+  updateOrderLink();
  });
  $.querySelectorAll('[data-slot]').forEach(sel=>sel.onchange=()=>{if(!sel.value)return;const orig=fixed[sel.dataset.slot];fixed[sel.dataset.slot]=sel.value;const check=C.plan(catalog,recipes,prefs,{seed,fixed,selected:chosen,atHome:[...homeIngredients]});
   const target=check.slots.find(s=>s.key===sel.dataset.slot);
   if(!target?.recipe){if(orig===undefined)delete fixed[sel.dataset.slot];else fixed[sel.dataset.slot]=orig;renderResult('Выбранное блюдо не удаётся обеспечить в рамках доступных запасов. Предложите другую замену.');}
   else renderResult('Блюдо заменено. Корзина пересчитана; при ограниченных остатках другие блюда тоже могут измениться.');
  });
- $.querySelectorAll('[data-ingredient]').forEach(sel=>sel.onchange=()=>{chosen[sel.dataset.ingredient]=sel.value;renderResult('Товар заменён. Итог и остатки пересчитаны для всей недели.');});
+ $.querySelectorAll('[data-ingredient]').forEach(sel=>sel.onchange=()=>{chosen[sel.dataset.ingredient]=sel.value;delete purchaseWishes[sel.dataset.ingredient];renderResult('Товар заменён. Итог и остатки пересчитаны для всей недели.');});
  document.getElementById('copy').onclick=async()=>{const t=basketText(lastPlan),btn=document.getElementById('copy');try{await navigator.clipboard.writeText(t);btn.textContent='Список скопирован';}catch(e){const ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();if(document.execCommand('copy'))btn.textContent='Список скопирован';else window.prompt('Скопируйте список:',t);ta.remove();}};
  document.getElementById('share').onclick=async()=>{const t=basketText(lastPlan);if(navigator.share){try{await navigator.share({title:'Паллета: меню на неделю',text:t});return;}catch(e){if(e.name==='AbortError')return;}}
   try{await navigator.clipboard.writeText(t);document.getElementById('share').textContent='Список скопирован';}catch(e){window.prompt('Скопируйте список:',t);}

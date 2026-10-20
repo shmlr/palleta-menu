@@ -11,9 +11,35 @@ function refClubCost(it){const p=it.p;if(!p||!['manual_club_snapshot','current_c
 const STATUS={in_stock:'подтверждено по выгрузке',unknown:'остаток уточняется',out_of_stock:'нет по выгрузке'};
 let catalog,recipes,step=0,seed=1,fixed={},chosen={},prefs={days:3,people:4,time:60,budget:0,excl:[],attendance:{}},lastPlan;
 let view='home',hasSavedPlan=false;
-let checkedItems=new Set(),homeIngredients=new Set();
+let checkedItems=new Set(),homeIngredients=new Set(),purchaseWishes={};
 const STORE_KEY='palleta-menu-v1';
 const WHATSAPP_NUMBER='79882040001';
+const safeWish=x=>String(x??'').replace(/[\x00-\x1f\x7f]/g,' ').trim().slice(0,90);
+function wishFor(it){return purchaseWishes[it.ingredient]||'';}
+function orderPreview(result){
+ const pending=pendingBasketItems(result),wished=pending.filter(it=>wishFor(it));
+ const current=pending.length>0&&!wished.length&&!result.basket.shortages.length&&pending.every(it=>it.priceCurrent&&it.stock==='in_stock');
+ const confirmed=current?Number(pending.reduce((n,it)=>n+it.cost,0).toFixed(2)):null;
+ const references=pending.filter(it=>!wishFor(it)&&refClubCost(it)!==null);
+ const reference=Number(references.reduce((n,it)=>n+refClubCost(it),0).toFixed(2));
+ return {pending,wished,confirmed,references,reference};
+}
+function budgetStatus(result){
+ const p=orderPreview(result),message=[];
+ if(prefs.budget)message.push('Ориентир бюджета на покупки в Паллете: до '+money(prefs.budget)+'. Мясо вне магазина отдельно.');
+ if(!p.pending.length)return message.concat('Не осталось товаров для заказа.').join(' ');
+ if(p.confirmed!==null){message.push('Расчёт по свежим данным: '+money(p.confirmed)+'.');if(prefs.budget)message.push(p.confirmed<=prefs.budget?'В пределах бюджета.':'Выше бюджета, требуется согласование.');}
+ else{message.push('Итоговая стоимость пока неизвестна.');if(p.references.length)message.push('Справочно: '+money(p.reference)+' по '+p.references.length+' из '+p.pending.length+' товаров (старые клубные цены, не текущая сумма).');if(p.wished.length)message.push('Замены: '+p.wished.length+' товар(ов), цена и фасовка требуют подтверждения.');if(prefs.budget)message.push('Соблюдение бюджета нельзя подтвердить без актуальных цен.');}
+ return message.join(' ');
+}
+function updateOrderLink(){
+ if(!lastPlan)return;
+ const p=orderPreview(lastPlan),wa=document.getElementById('whatsapp'),note=document.getElementById('purchase-pending'),status=document.getElementById('budget-progress');
+ if(note)note.textContent='В заявку: '+p.pending.length+' из '+lastPlan.basket.items.length+' позиций.';
+ if(status)status.textContent=budgetStatus(lastPlan);
+ if(wa){if(p.pending.length){wa.setAttribute('href',whatsappHref(lastPlan));wa.removeAttribute('aria-disabled');wa.textContent='Отправить список в WhatsApp ↗';}else{wa.removeAttribute('href');wa.setAttribute('aria-disabled','true');wa.textContent='Все товары отмечены как купленные';}}
+}
+
 // Attribution only: no recipe identity or paid entitlement is inferred from these parameters.
 const BERBENA_RECIPES='https://berbena.pro/prorecepty';
 function berbenaHref(content='general'){
@@ -21,7 +47,7 @@ function berbenaHref(content='general'){
  return BERBENA_RECIPES+'?utm_source=palleta_menu&utm_medium=referral&utm_campaign=recipes_to_berbena&utm_content='+encodeURIComponent(token);
 }
 function saveState(){
- try{if(!window.localStorage)return;window.localStorage.setItem(STORE_KEY,JSON.stringify({version:3,step,seed,prefs,fixed,chosen,checked:[...checkedItems],home:[...homeIngredients]}));}catch(e){}
+ try{if(!window.localStorage)return;window.localStorage.setItem(STORE_KEY,JSON.stringify({version:3,step,seed,prefs,fixed,chosen,checked:[...checkedItems],home:[...homeIngredients],wishes:purchaseWishes}));}catch(e){}
 }
 function loadState(){
  try{
@@ -52,6 +78,11 @@ function loadState(){
   const valid=new Set(catalog.products.map(p=>p.id));
   if(Array.isArray(s.checked))checkedItems=new Set(s.checked.filter(x=>valid.has(x)));
   if(Array.isArray(s.home))homeIngredients=new Set(s.home.filter(id=>catalog.byIngredient[id]&&catalog.byIngredient[id].sold_in_palleta!==false));
+   if(s.wishes&&typeof s.wishes==='object'&&!Array.isArray(s.wishes))for(const [id,value] of Object.entries(s.wishes)){
+    if(catalog.byIngredient[id]&&catalog.byIngredient[id].sold_in_palleta!==false&&typeof value==='string'){
+     const cleaned=safeWish(value);if(cleaned)purchaseWishes[id]=cleaned;
+    }
+   }
  }catch(e){}
 }
 
@@ -69,7 +100,7 @@ function renderHome(){
  else h+='<button class="btn secondary" id="demo-menu">Посмотреть пример меню</button>';
  h+='</div><div class="panel home-about"><h2>Как это работает</h2><p><b>1.</b> Выберите количество людей, время и ограничения.</p><p><b>2.</b> Получите меню, меняйте блюда и подходящие продукты.</p><p><b>3.</b> Отметьте, что уже есть дома, и отправьте оставшуюся корзину в Паллету.</p></div><p class="muted">Клубные цены показаны справочно с датой. Наличие и итоговую сумму подтвердит магазин.</p>';
  $.innerHTML=h;
- document.getElementById('start-menu').onclick=()=>{step=0;seed=1;fixed={};chosen={};checkedItems.clear();homeIngredients.clear();prefs.days=3;prefs.attendance={};hasSavedPlan=false;view='planner';render();};
+ document.getElementById('start-menu').onclick=()=>{step=0;seed=1;fixed={};chosen={};checkedItems.clear();homeIngredients.clear();purchaseWishes={};prefs.days=3;prefs.attendance={};hasSavedPlan=false;view='planner';render();};
  if(hasSavedPlan)document.getElementById('continue-menu').onclick=()=>{step=Q.length;view='planner';render();};
  else document.getElementById('demo-menu').onclick=()=>{step=Q.length;view='planner';render();};
 }

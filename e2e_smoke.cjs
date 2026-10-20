@@ -105,9 +105,14 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
   const own=page.locator('#at-home [data-home]').first();
   assert.equal(await own.getAttribute('data-home'),ownedIngredient);
   assert.equal(await own.isChecked(),true);
-  const ownerText=new URL(await page.locator('#whatsapp').getAttribute('href')).searchParams.get('text');
+  const afterHomeHref=await page.locator('#whatsapp').getAttribute('href');
   const ownedTitle=(await page.locator('#at-home .product label').first().innerText()).trim();
-  assert(!ownerText.includes('• '+ownedTitle+' —'),'owned product must not be in WhatsApp');
+  if(afterHomeHref){
+    const ownerText=new URL(afterHomeHref).searchParams.get('text');
+    assert(!ownerText.includes('• '+ownedTitle+' —'),'owned product must not be in WhatsApp');
+  }else{
+    assert.equal(await page.locator('#whatsapp').getAttribute('aria-disabled'),'true','empty order is disabled when all goods are at home');
+  }
 
   for(const forbidden of ['Фарш говяжий','Куриные потроха','Филе куриное','Куриное филе','Куриная грудка'])assert(!payload.includes(forbidden),'meat appeared in WhatsApp: '+forbidden);
   assert(/курин|фарш|мяс/i.test(await page.locator('#outside-store').innerText()));

@@ -166,8 +166,19 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
   assert.equal(await page.locator('.slot').count(),21);
   assert.equal(await page.locator('#at-home').count(),0,'new menu clears home flags');
   // One family chooses brands and sorts after selecting a budget.
-  await page.locator('[data-slot="0-breakfast"]').selectOption('rice_porridge');
-  await page.locator('[data-slot="0-lunch"]').selectOption('vegetable_soup');
+  async function ensureInBasket(input,recipesToTry,meal){
+    if(await page.locator(input).count())return;
+    for(let day=0;day<7;day++)for(const id of recipesToTry){
+      const option=page.locator('[data-slot="'+day+'-'+meal+'"] option[value="'+id+'"]');
+      if(await option.count()){
+        await page.locator('[data-slot="'+day+'-'+meal+'"]').selectOption(id);
+        if(await page.locator(input).count())return;
+      }
+    }
+    assert.equal(await page.locator(input).count(),1,'ingredient must be part of the chosen menu: '+input);
+  }
+  await ensureInBasket('[data-wish="milk"]',['rice_porridge','pancakes','omelet_greens','omelet_zucchini'],'breakfast');
+  await ensureInBasket('[data-wish="tomato"]',['vegetable_soup','chicken_potato_stew','tomato_egg_soup','mince_rice'],'lunch');
   const milkWish=page.locator('[data-wish="milk"]');
   const tomatoWish=page.locator('[data-wish="tomato"]');
   assert(await milkWish.count()===1&&await tomatoWish.count()===1,'milk and tomatoes appear in selected menu');

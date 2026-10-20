@@ -263,10 +263,9 @@ def run(report_path, catalog_path, allowlist_path, *, sender, subject, email_sen
         "updated_prices": len(changes),
         "online_stock_confirmed": False
     }
-    catalog.setdefault("source_notes", []).append(
-        f"{iso}: контрольный импорт {len(changes)} клубных цен из XLS min-max; "
-        "только датированные справочные цены. Остатки, закупочные цены, маржа и сырой файл не публиковались."
-    )
+    # Never attach operational notes to any catalog tracked in a public repository.
+    # Keep human-readable import evidence in the PR/Actions audit, not in products.json.
+    catalog.pop("source_notes", None)
     public = [(p["id"], p["price"]) for p, _ in changes]
     return catalog, {"result": "PASS_DATED_REFERENCE_ONLY", "capture": iso,
                      "source_rows": len(rows), "updated_prices": len(changes),

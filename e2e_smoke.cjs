@@ -81,6 +81,23 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
   assert(payload.includes('Список покупок:')&&payload.includes('фактическое наличие'));
   assert(payload.includes('Заявка предварительная.')&&payload.length<3000);
   assert(payload.includes('3 дн.'),'WhatsApp reflects chosen 3-day period');
+
+  const firstBought=page.locator('input.shopping-check').first();
+  await firstBought.check();
+  const reducedHref=await wa.getAttribute('href');
+  assert.notEqual(reducedHref,href,'marking item bought must change WhatsApp URL');
+  const reducedText=new URL(reducedHref).searchParams.get('text');
+  assert(reducedText.length<payload.length,'bought item must be omitted from WhatsApp payload');
+  assert((await page.locator('#purchase-pending').innerText()).includes('В заявку:'));
+  await firstBought.uncheck();
+  assert.equal(await wa.getAttribute('href'),href,'unchecking restores original cart and WhatsApp message');
+  for(const item of await page.locator('input.shopping-check').all())await item.check();
+  assert.equal(await wa.getAttribute('href'),null,'no empty WhatsApp order when everything bought');
+  assert.equal(await wa.getAttribute('aria-disabled'),'true');
+  for(const item of await page.locator('input.shopping-check').all())await item.uncheck();
+  assert.equal(await wa.getAttribute('href'),href,'restoring items restores order link');
+  assert.equal(await page.getByText('Какие SKU стоит проверить').count(),0,'buyer never sees internal SKU checklist');
+
   const toggle=page.locator('input[data-home]').first();
   const ownedIngredient=await toggle.getAttribute('data-home');
   await toggle.check();
@@ -88,9 +105,14 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
   const own=page.locator('#at-home [data-home]').first();
   assert.equal(await own.getAttribute('data-home'),ownedIngredient);
   assert.equal(await own.isChecked(),true);
-  const ownerText=new URL(await page.locator('#whatsapp').getAttribute('href')).searchParams.get('text');
+  const afterHomeHref=await page.locator('#whatsapp').getAttribute('href');
   const ownedTitle=(await page.locator('#at-home .product label').first().innerText()).trim();
-  assert(!ownerText.includes('• '+ownedTitle+' —'),'owned product must not be in WhatsApp');
+  if(afterHomeHref){
+    const ownerText=new URL(afterHomeHref).searchParams.get('text');
+    assert(!ownerText.includes('• '+ownedTitle+' —'),'owned product must not be in WhatsApp');
+  }else{
+    assert.equal(await page.locator('#whatsapp').getAttribute('aria-disabled'),'true','empty order is disabled when all goods are at home');
+  }
 
   for(const forbidden of ['Фарш говяжий','Куриные потроха','Филе куриное','Куриное филе','Куриная грудка'])assert(!payload.includes(forbidden),'meat appeared in WhatsApp: '+forbidden);
   assert(/курин|фарш|мяс/i.test(await page.locator('#outside-store').innerText()));

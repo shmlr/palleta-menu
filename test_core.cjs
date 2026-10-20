@@ -1,6 +1,9 @@
 const fs=require('fs'),assert=require('assert'),C=require('./core.js');
 const base=JSON.parse(fs.readFileSync(__dirname+'/products.json','utf8'));
 const rs=JSON.parse(fs.readFileSync(__dirname+'/recipes.json','utf8')).recipes;
+assert(!Object.hasOwn(base,'source_notes'),'public source catalog may not contain warehouse notes');
+assert(base.products.every(p=>!Object.hasOwn(p,'source')&&!Object.hasOwn(p,'assortment_note')&&!Object.hasOwn(p,'legacy_sku_code')),'free-form product internals must not return');
+
 const prefs={people:4,time:60,budget:12000,excl:[]};
 function clone(){return structuredClone(base)};
 const now=Date.now(),stamp=new Date(now-5*60000).toISOString();

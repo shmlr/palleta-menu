@@ -135,7 +135,8 @@ function basketText(result){
  let t=`Паллета. Заявка на проверку корзины\nКЛУБНЫЕ ЦЕНЫ: только по карте Паллеты.\n${prefs.days===3?'3 дня':'7 дней'}, завтрак / обед / ужин, на ${prefs.people} чел.\n`;
  for(const slot of result.slots)t+=`${C.DAYS[slot.day]} ${C.MEAL_NAMES[slot.meal]} (${slot.mode==='picnic'?'пикник':slot.people+' чел. дома'}): ${slot.recipe?slot.recipe.name:slot.reason||'НЕ ПОДОБРАНО'}\n`;
  t+='\nКупить в Паллете (предварительная заявка):\n';
- for(const it of pendingBasketItems(result)){const ref=refClubCost(it);
+ for(const it of pendingBasketItems(result)){const ref=refClubCost(it),wish=wishFor(it);
+  if(wish){t+='• '+it.ing.name+': хочу «'+wish+'»; расчётная потребность '+qfmt(it.quantity)+' '+it.p.unit+'; фасовку, количество и стоимость уточнить.\n';continue;}
   const qty=it.p.pricing_mode==='by_weight'?`${qfmt(it.quantity)} ${it.p.unit}`:`${it.packs} уп. по ${qfmt(it.p.pack_size)} ${it.p.unit}`;
   t+=`• ${it.p.name} — ${qty}; наличие ${STATUS[it.stock]}; ${it.priceCurrent?'клубная стоимость '+money(it.cost):ref!==null?'справочная стоимость '+money(ref)+' по клубным ценам от '+humanDate(it.p.price_as_of):'клубная цена неизвестна'}\n`;
  }
@@ -158,12 +159,17 @@ function pendingBasketItems(result){return result.basket.items.filter(it=>!check
 function whatsappOrderText(result){
  const lines=['Здравствуйте! Прошу проверить наличие и собрать продукты в «Паллете» по меню на неделю.',
   'Семья: '+prefs.people+' чел. · '+prefs.days+' дн. · '+result.filled+' блюд, '+result.skipped+' приёмов пищи без готовки дома.',
-  'Список покупок:'];
+  ];
+ if(prefs.budget)lines.push('Ориентир бюджета на товары Паллеты: до '+money(prefs.budget)+'. Мясо вне магазина отдельно.');
+ lines.push('Список покупок:');
  for(const it of pendingBasketItems(result)){
+  const wish=wishFor(it);
+  if(wish){lines.push('• '+it.ing.name+': хочу «'+wish+'»; расчётная потребность '+qfmt(it.quantity)+' '+it.p.unit+' (количество упаковок и стоимость подтвердите).');continue;}
   const quantity=it.p.pricing_mode==='by_weight'?qfmt(it.quantity)+' '+it.p.unit:it.packs+' уп. по '+qfmt(it.p.pack_size)+' '+it.p.unit;
   lines.push('• '+it.p.name+' — '+quantity);
  }
  if(result.basket.shortages.length)lines.push('Не подобраны: '+result.basket.shortages.map(i=>i.name||i.id).join(', '));
+ if(orderPreview(result).wished.length)lines.push('Уточните замены с покупателем перед сборкой.');
  lines.push('Прошу подтвердить фактическое наличие, клубные цены, возможные замены и итоговую сумму.');
  lines.push('Заявка предварительная. До подтверждения магазином заказ не оформлен.');
  return lines.join('\n');

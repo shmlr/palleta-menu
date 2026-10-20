@@ -81,6 +81,23 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
   assert(payload.includes('Список покупок:')&&payload.includes('фактическое наличие'));
   assert(payload.includes('Заявка предварительная.')&&payload.length<3000);
   assert(payload.includes('3 дн.'),'WhatsApp reflects chosen 3-day period');
+
+  const firstBought=page.locator('input.shopping-check').first();
+  await firstBought.check();
+  const reducedHref=await wa.getAttribute('href');
+  assert.notEqual(reducedHref,href,'marking item bought must change WhatsApp URL');
+  const reducedText=new URL(reducedHref).searchParams.get('text');
+  assert(reducedText.length<payload.length,'bought item must be omitted from WhatsApp payload');
+  assert((await page.locator('#purchase-pending').innerText()).includes('В заявку:'));
+  await firstBought.uncheck();
+  assert.equal(await wa.getAttribute('href'),href,'unchecking restores original cart and WhatsApp message');
+  for(const item of await page.locator('input.shopping-check').all())await item.check();
+  assert.equal(await wa.getAttribute('href'),null,'no empty WhatsApp order when everything bought');
+  assert.equal(await wa.getAttribute('aria-disabled'),'true');
+  for(const item of await page.locator('input.shopping-check').all())await item.uncheck();
+  assert.equal(await wa.getAttribute('href'),href,'restoring items restores order link');
+  assert.equal(await page.getByText('Какие SKU стоит проверить').count(),0,'buyer never sees internal SKU checklist');
+
   const toggle=page.locator('input[data-home]').first();
   const ownedIngredient=await toggle.getAttribute('data-home');
   await toggle.check();

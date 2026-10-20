@@ -37,6 +37,14 @@ function updateOrderLink(){
  const p=orderPreview(lastPlan),wa=document.getElementById('whatsapp'),note=document.getElementById('purchase-pending'),status=document.getElementById('budget-progress');
  if(note)note.textContent='В заявку: '+p.pending.length+' из '+lastPlan.basket.items.length+' позиций.';
  if(status)status.textContent=budgetStatus(lastPlan);
+ const total=document.getElementById('order-value');
+ if(total)total.textContent=p.confirmed!==null?money(p.confirmed):'Полный итог пока неизвестен';
+ const reference=document.getElementById('reference-summary');
+ if(reference){
+  const known=p.references.filter(it=>!it.priceCurrent);
+  reference.hidden=!known.length;
+  if(known.length)reference.textContent='Справочная сумма по '+known.length+' из '+p.pending.length+' позиций без пожеланий: ≈ '+money(known.reduce((n,it)=>n+refClubCost(it),0))+'. Только датированные клубные цены, не подтверждённая стоимость.';
+ }
  if(wa){if(p.pending.length){wa.setAttribute('href',whatsappHref(lastPlan));wa.removeAttribute('aria-disabled');wa.textContent='Отправить список в WhatsApp ↗';}else{wa.removeAttribute('href');wa.setAttribute('aria-disabled','true');wa.textContent='Все товары отмечены как купленные';}}
 }
 
@@ -206,11 +214,11 @@ function renderResult(message=''){
  }
  h+='<div class="panel" id="shopping"><h2>Купить в Паллете</h2><p class="small">В сумму и заявку входят только товары Паллеты, которых нет дома. Мясо учитывается отдельно.</p>';
  const order=orderPreview(lastPlan),currentConfirm=order.confirmed!==null;
- h+=`<div class="value">${currentConfirm?money(order.confirmed):'Полный итог пока неизвестен'}</div>`;
+ h+=`<div class="value" id="order-value">${currentConfirm?money(order.confirmed):'Полный итог пока неизвестен'}</div>`;
  h+=`<p class="muted">${currentConfirm?'Все позиции покрыты свежими остатками и клубными ценами из УТ 11. Расчёт действует при предъявлении карты; чек подтвердит магазин.':'Клубный итог пока неизвестен: нужны свежие подтверждённые цены по карте и остатки. Исторические розничные цены не учитываются.'}</p>`;
  h+=`<p class="small">Позиции: ${b.items.length} · Без свежего остатка: ${b.items.filter(x=>x.stock!=='in_stock').length} · Без свежей цены: ${b.items.filter(x=>!x.priceCurrent).length} · Нехватка: ${b.shortages.length}</p>`;
  const known=order.references.filter(it=>!it.priceCurrent);
- if(known.length){const estimate=known.reduce((sum,it)=>sum+refClubCost(it),0);h+=`<div class="note"><b>Справочная сумма по ${known.length} из ${order.pending.length} позиций без пожеланий: ≈ ${money(estimate)}</b><p class="small">Только товары с известной клубной ценой на дату выгрузки. Это не полная стоимость корзины и не подтверждённый заказ.</p></div>`;}
+ if(known.length){const estimate=known.reduce((sum,it)=>sum+refClubCost(it),0);h+=`<div class="note" id="reference-summary"><b>Справочная сумма по ${known.length} из ${order.pending.length} позиций без пожеланий: ≈ ${money(estimate)}</b><p class="small">Только товары с известной клубной ценой на дату выгрузки. Это не полная стоимость корзины и не подтверждённый заказ.</p></div>`;}
  if(p.filled<p.activeSlots)h+=`<p class="error">${p.activeSlots-p.filled} блюд не подобрано: в каталоге нет подтверждённых подходящих сочетаний при ваших ограничениях.</p>`;
  h+=`<p class="small" id="budget-progress">${esc(budgetStatus(lastPlan))}</p>`;
  h+='</div><div class="panel"><h2>Список покупок в Паллете <span class="pill" id="check-count">'+b.items.filter(x=>checkedItems.has(x.p.id)).length+' / '+b.items.length+' куплено</span></h2><p class="muted">Отметка «Куплено» исключает товар из WhatsApp-заявки и копируемого списка. «Уже есть дома» убирает ингредиент из расчёта корзины. Значок ≈ означает справочную цену.</p><p class="small" id="purchase-pending">В заявку: '+pendingBasketItems(lastPlan).length+' из '+b.items.length+' позиций.</p>';
@@ -221,9 +229,9 @@ function renderResult(message=''){
  h+=`<p class="small">${esc(it.p.name)} · ${qty} · ${esc(STATUS[it.stock])}</p>`;
  h+=`<label class="small home-checkbox"><input type="checkbox" data-home="${esc(it.ing.id)}"> Уже есть дома — убрать из заявки</label>`;
  
- if(wish)h+=`<p class="small warning">Пожелание: ${esc(wish)}. Показанная фасовка используется только для рецепта. Цену и количество уточнит магазин.</p>`;
- if(!wish&&it.priceKnown&&!it.priceCurrent)h+=`<p class="small">Последняя известная клубная стоимость ${money(it.cost)} · не текущая цена</p>`;
- if(!wish&&ref!==null&&!it.priceCurrent){h+=`<p class="small">Клубная цена на ${esc(humanDate(it.p.price_as_of))}: ${money(it.p.price)} за ${it.p.pricing_mode==='by_pack'?'упаковку':esc(it.p.unit)}. Справочно, не текущая цена.</p>`;}
+ h+=`<p class="small warning" data-wish-note="${esc(it.ingredient)}">${wish?'Пожелание: '+esc(wish)+'. Показанная фасовка используется только для рецепта. Цену и количество уточнит магазин.':''}</p>`;
+ if(it.priceKnown&&!it.priceCurrent)h+=`<p class="small" data-reference-info ${wish?'hidden':''}>Последняя известная клубная стоимость ${money(it.cost)} · не текущая цена</p>`;
+ if(ref!==null&&!it.priceCurrent){h+=`<p class="small" data-reference-info ${wish?'hidden':''}>Клубная цена на ${esc(humanDate(it.p.price_as_of))}: ${money(it.p.price)} за ${it.p.pricing_mode==='by_pack'?'упаковку':esc(it.p.unit)}. Справочно, не текущая цена.</p>`;}
  if(opts.length>1){h+=`<label class="small" for="select-${esc(it.ingredient)}">Заменить на аналог или другую фасовку</label><select id="select-${esc(it.ingredient)}" data-ingredient="${esc(it.ingredient)}">`;
  for(const op of opts){
   const dated=['manual_club_snapshot','current_club'].includes(op.price_source)&&op.price_type==='Оптовая, RUB'&&Number.isFinite(op.price)&&op.price_as_of;
@@ -289,8 +297,20 @@ h+='<p class="muted">* Соль, вода и специи для многих р
   renderResult(el.checked?'Продукт уже есть дома, поэтому исключён из заявки.':'Продукт возвращён в покупки.');
  });
  $.querySelectorAll('[data-wish]').forEach(el=>{
-  el.oninput=()=>{const id=el.dataset.wish,value=safeWish(el.value);if(value)purchaseWishes[id]=value;else delete purchaseWishes[id];saveState();updateOrderLink();};
-  el.onchange=()=>renderResult('Пожелание сохранено. Цену и число упаковок подтвердит магазин.');
+  el.oninput=()=>{
+   const id=el.dataset.wish,value=safeWish(el.value);
+   if(value)purchaseWishes[id]=value;else delete purchaseWishes[id];
+   const it=lastPlan.basket.items.find(x=>x.ingredient===id);
+   const row=el.closest('.product');
+   if(it&&row){
+    const amount=row.querySelector('.amount'),ref=refClubCost(it);
+    if(amount)amount.textContent=value?'цену уточнить':it.priceCurrent?money(it.cost):ref!==null?'≈ '+money(ref):'цену уточнить';
+    row.querySelectorAll('[data-reference-info]').forEach(x=>x.hidden=!!value);
+    const note=row.querySelector('[data-wish-note]');
+    if(note)note.textContent=value?'Пожелание: '+value+'. Показанная фасовка используется только для рецепта. Цену и количество уточнит магазин.':'';
+   }
+   saveState();updateOrderLink();
+  };
  });
  $.querySelectorAll('[data-check]').forEach(el=>el.onchange=()=>{
   if(el.checked)checkedItems.add(el.dataset.check);else checkedItems.delete(el.dataset.check);

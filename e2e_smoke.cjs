@@ -88,7 +88,16 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
   assert.notEqual(reducedHref,href,'marking item bought must change WhatsApp URL');
   const reducedText=new URL(reducedHref).searchParams.get('text');
   assert(reducedText.length<payload.length,'bought item must be omitted from WhatsApp payload');
+  const boughtName=(await firstBought.getAttribute('aria-label')).replace(/^Куплено: /,'');
+  assert(!reducedText.includes('• '+boughtName+' —'),'exact bought SKU must be absent from order text');
   assert((await page.locator('#purchase-pending').innerText()).includes('В заявку:'));
+  // Verify persisted purchased state, not only the pantry state, after a real page reload.
+  await page.reload({waitUntil:'networkidle'});
+  await page.getByRole('button',{name:'Продолжить сохранённое меню'}).click();
+  assert(await firstBought.isChecked(),'bought checkbox survives saved menu reload');
+  const restoredBoughtHref=await wa.getAttribute('href');
+  assert.equal(restoredBoughtHref,reducedHref,'reloaded WhatsApp payload excludes the same bought SKU');
+  assert(!new URL(restoredBoughtHref).searchParams.get('text').includes('• '+boughtName+' —'));
   await firstBought.uncheck();
   assert.equal(await wa.getAttribute('href'),href,'unchecking restores original cart and WhatsApp message');
   for(const item of await page.locator('input.shopping-check').all())await item.check();
@@ -96,6 +105,18 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
   assert.equal(await wa.getAttribute('aria-disabled'),'true');
   for(const item of await page.locator('input.shopping-check').all())await item.uncheck();
   assert.equal(await wa.getAttribute('href'),href,'restoring items restores order link');
+  // Alternative packs must update the actual WhatsApp text, and switching back must restore it.
+  const selectInShop=page.locator('.panel').filter({has:page.locator('#check-count')}).locator('select[data-ingredient]').first();
+  assert(await selectInShop.count()>0,'3-day menu must expose at least one store alternative');
+  const originalId=await selectInShop.inputValue();
+  const alternative=await selectInShop.locator('option').evaluateAll((opts,current)=>opts.filter(x=>x.value!==current).map(x=>({id:x.value,name:x.textContent.split(' · ')[0]}))[0],originalId);
+  assert(alternative?.id,'alternative SKU exists');
+  await selectInShop.selectOption(alternative.id);
+  const changedHref=await wa.getAttribute('href');
+  assert(changedHref&&changedHref!==href,'alternative changes outgoing order URL');
+  assert(new URL(changedHref).searchParams.get('text').includes('• '+alternative.name+' —'),'alternative SKU shown in order text');
+  await selectInShop.selectOption(originalId);
+  assert.equal(await wa.getAttribute('href'),href,'restoring original SKU restores WhatsApp order');
   assert.equal(await page.getByText('Какие SKU стоит проверить').count(),0,'buyer never sees internal SKU checklist');
 
   const toggle=page.locator('input[data-home]').first();

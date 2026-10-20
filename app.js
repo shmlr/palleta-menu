@@ -79,7 +79,7 @@ function loadState(){
   if(Array.isArray(s.checked))checkedItems=new Set(s.checked.filter(x=>valid.has(x)));
   if(Array.isArray(s.home))homeIngredients=new Set(s.home.filter(id=>catalog.byIngredient[id]&&catalog.byIngredient[id].sold_in_palleta!==false));
    if(s.wishes&&typeof s.wishes==='object'&&!Array.isArray(s.wishes))for(const [id,value] of Object.entries(s.wishes)){
-    if(catalog.byIngredient[id]&&catalog.byIngredient[id].sold_in_palleta!==false&&typeof value==='string'){
+    if(Object.hasOwn(catalog.byIngredient,id)&&catalog.byIngredient[id].sold_in_palleta!==false&&typeof value==='string'){
      const cleaned=safeWish(value);if(cleaned)purchaseWishes[id]=cleaned;
     }
    }
@@ -134,6 +134,7 @@ function alternativesFor(slot){
 function basketText(result){
  let t=`Паллета. Заявка на проверку корзины\nКЛУБНЫЕ ЦЕНЫ: только по карте Паллеты.\n${prefs.days===3?'3 дня':'7 дней'}, завтрак / обед / ужин, на ${prefs.people} чел.\n`;
  for(const slot of result.slots)t+=`${C.DAYS[slot.day]} ${C.MEAL_NAMES[slot.meal]} (${slot.mode==='picnic'?'пикник':slot.people+' чел. дома'}): ${slot.recipe?slot.recipe.name:slot.reason||'НЕ ПОДОБРАНО'}\n`;
+ if(prefs.budget)t+='\nОриентир бюджета на товары Паллеты: до '+money(prefs.budget)+' (без мяса вне магазина).\n';
  t+='\nКупить в Паллете (предварительная заявка):\n';
  for(const it of pendingBasketItems(result)){const ref=refClubCost(it),wish=wishFor(it);
   if(wish){t+='• '+it.ing.name+': хочу «'+wish+'»; расчётная потребность '+qfmt(it.quantity)+' '+it.p.unit+'; фасовку, количество и стоимость уточнить.\n';continue;}
@@ -224,7 +225,11 @@ function renderResult(message=''){
  if(!wish&&it.priceKnown&&!it.priceCurrent)h+=`<p class="small">Последняя известная клубная стоимость ${money(it.cost)} · не текущая цена</p>`;
  if(!wish&&ref!==null&&!it.priceCurrent){h+=`<p class="small">Клубная цена на ${esc(humanDate(it.p.price_as_of))}: ${money(it.p.price)} за ${it.p.pricing_mode==='by_pack'?'упаковку':esc(it.p.unit)}. Справочно, не текущая цена.</p>`;}
  if(opts.length>1){h+=`<label class="small" for="select-${esc(it.ingredient)}">Заменить на аналог или другую фасовку</label><select id="select-${esc(it.ingredient)}" data-ingredient="${esc(it.ingredient)}">`;
- for(const op of opts)h+=`<option value="${esc(op.id)}" ${op.id===it.p.id?'selected':''}>${esc(op.name)} · ${esc(STATUS[C.availability(op,catalog)])}</option>`;
+ for(const op of opts){
+  const dated=['manual_club_snapshot','current_club'].includes(op.price_source)&&op.price_type==='Оптовая, RUB'&&Number.isFinite(op.price)&&op.price_as_of;
+  const hint=dated?' · ≈ '+money(op.price)+' за '+(op.pricing_mode==='by_pack'?'уп.':op.unit)+' на '+humanDate(op.price_as_of)+' (справочно)':' · цену уточнить';
+  h+=`<option value="${esc(op.id)}" ${op.id===it.p.id?'selected':''}>${esc(op.name)} · ${esc(STATUS[C.availability(op,catalog)])}${esc(hint)}</option>`;
+ }
  h+='</select>';
  }
  const suggested=(it.ing.product_ids||[]).map(id=>catalog.byProduct[id]).filter(x=>x&&x.id!==it.p.id&&x.sold_in_palleta!==false);

@@ -165,6 +165,44 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
   await page.getByRole('heading',{name:'Семейное меню на 7 дней'}).waitFor();
   assert.equal(await page.locator('.slot').count(),21);
   assert.equal(await page.locator('#at-home').count(),0,'new menu clears home flags');
+  // One family chooses brands and sorts after selecting a budget.
+  async function ensureInBasket(input,recipesToTry,meal){
+    if(await page.locator(input).count())return;
+    for(let day=0;day<7;day++)for(const id of recipesToTry){
+      const option=page.locator('[data-slot="'+day+'-'+meal+'"] option[value="'+id+'"]');
+      if(await option.count()){
+        await page.locator('[data-slot="'+day+'-'+meal+'"]').selectOption(id);
+        if(await page.locator(input).count())return;
+      }
+    }
+    assert.equal(await page.locator(input).count(),1,'ingredient must be part of the chosen menu: '+input);
+  }
+  await ensureInBasket('[data-wish="milk"]',['rice_porridge','pancakes','omelet_greens','omelet_zucchini'],'breakfast');
+  await ensureInBasket('[data-wish="tomato"]',['vegetable_soup','chicken_potato_stew','tomato_egg_soup','mince_rice'],'lunch');
+  const milkWish=page.locator('[data-wish="milk"]');
+  const tomatoWish=page.locator('[data-wish="tomato"]');
+  assert(await milkWish.count()===1&&await tomatoWish.count()===1,'milk and tomatoes appear in selected menu');
+  assert(await page.locator('#wish-list-milk option[value*="Вкуснотеево"]').count()===1,'existing Vkusnoteevo can be requested without unit conversion');
+  await milkWish.fill('Молоко Вкуснотеево 3,2%, 950 г');
+  await tomatoWish.fill('Помидоры черри');
+  await tomatoWish.press('Tab');
+  const wishedText=new URL(await page.locator('#whatsapp').getAttribute('href')).searchParams.get('text');
+  assert(wishedText.includes('Молоко: хочу «Молоко Вкуснотеево 3,2%, 950 г»'),'Vkusnoteevo request in real WhatsApp text');
+  assert(wishedText.includes('Помидоры: хочу «Помидоры черри»'),'cherry tomato request in real WhatsApp text: '+wishedText.slice(0,1700));
+  assert(!wishedText.includes('• Молоко Дарман')&&!wishedText.includes('• Помидоры Новичок'),'original milk/tomato not silently ordered');
+  assert(wishedText.includes('Ориентир бюджета на товары Паллеты'),'budget reaches WhatsApp for staff');
+  assert((await page.locator('#budget-progress').innerText()).includes('нельзя подтвердить'),'no false budget confirmation with stale prices');
+  await page.reload({waitUntil:'networkidle'});
+  await page.getByRole('button',{name:'Продолжить сохранённое меню'}).click();
+  assert.equal(await page.locator('[data-wish="milk"]').inputValue(),'Молоко Вкуснотеево 3,2%, 950 г');
+  assert.equal(await page.locator('[data-wish="tomato"]').inputValue(),'Помидоры черри');
+  assert.equal(new URL(await page.locator('#whatsapp').getAttribute('href')).searchParams.get('text'),wishedText,'saved wishlist and outgoing WhatsApp remain identical');
+  // The purchased and pantry checkboxes still take precedence over any wishlist.
+  const tomatoCheck=page.locator('.product').filter({has:page.locator('[data-wish="tomato"]')}).locator('.shopping-check');
+  await tomatoCheck.check();
+  assert(!new URL(await page.locator('#whatsapp').getAttribute('href')).searchParams.get('text').includes('Помидоры: хочу'),'bought product and its wish must be absent');
+  await tomatoCheck.uncheck();
+  assert.equal(new URL(await page.locator('#whatsapp').getAttribute('href')).searchParams.get('text'),wishedText,'unchecking returns wanted cherry tomatoes');
   await page.getByRole('button',{name:'В выходные обед-пикник'}).click();
   assert((await page.locator('[data-attendance="5-lunch"]').inputValue())==='picnic');
   assert((await page.locator('[data-attendance="6-lunch"]').inputValue())==='picnic');

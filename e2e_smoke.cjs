@@ -188,7 +188,7 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
   await tomatoWish.press('Tab');
   const wishedText=new URL(await page.locator('#whatsapp').getAttribute('href')).searchParams.get('text');
   assert(wishedText.includes('Молоко: хочу «Молоко Вкуснотеево 3,2%, 950 г»'),'Vkusnoteevo request in real WhatsApp text');
-  assert(wishedText.includes('Помидоры: хочу «Помидоры черри»'),'cherry tomato request in real WhatsApp text');
+  assert(wishedText.includes('Помидоры: хочу «Помидоры черри»'),'cherry tomato request in real WhatsApp text: '+wishedText.slice(0,1700));
   assert(!wishedText.includes('• Молоко Дарман')&&!wishedText.includes('• Помидоры Новичок'),'original milk/tomato not silently ordered');
   assert(wishedText.includes('Ориентир бюджета на товары Паллеты'),'budget reaches WhatsApp for staff');
   assert((await page.locator('#budget-progress').innerText()).includes('нельзя подтвердить'),'no false budget confirmation with stale prices');

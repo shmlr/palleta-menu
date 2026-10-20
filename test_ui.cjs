@@ -73,7 +73,8 @@ assert(sw.includes('products.json')&&sw.includes('recipes.json'));
 assert(fs.readFileSync(basedir+'app.js','utf8').includes('shopping-check'));
 console.log('PASS: installable application, offline cache, local shopping checklist');
 
-assert(fs.readFileSync(basedir+'app.js','utf8').includes('Учтена в группе «Рынок 2»'));
+assert(!fs.readFileSync(basedir+'app.js','utf8').includes('Какие SKU стоит проверить'),'internal buyer-facing SKU text removed');
+assert(!fs.readFileSync(basedir+'app.js','utf8').includes('Учтена в группе «Рынок 2»'),'internal 1C group removed');
 
 const tabIcon=fs.readFileSync(basedir+'assets/palleta-favicon-32.png');
 const pwa192=fs.readFileSync(basedir+'assets/app-icon-192.png');

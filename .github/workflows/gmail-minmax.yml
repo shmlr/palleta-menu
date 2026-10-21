@@ -6,6 +6,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  actions: write # needed to dispatch CI for a PR made with GITHUB_TOKEN
 concurrency:
   group: gmail-minmax-import
   cancel-in-progress: false
@@ -78,3 +79,8 @@ jobs:
           git commit -m "data: validated dated 1C club reference prices"
           git push origin "$branch"
           gh pr create --base main --head "$branch" --title "1C min-max: validated club-price reference" --body "Automated Gmail ingestion. ONLY allowlisted independently reviewed SKU prices. No raw XLS, stock, costs or credentials. Requires QA and review before merge."
+          # GITHUB_TOKEN-created PRs do not trigger pull_request CI workflows.
+          # Dispatch the existing test.yml on this exact branch instead;
+          # no auto-merge/publish is permitted, independent review still required.
+          gh workflow run test.yml --ref "$branch"
+          echo "::notice::Dispatched full QA for $branch; review its result before merging."

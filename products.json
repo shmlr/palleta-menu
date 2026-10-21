@@ -267,7 +267,7 @@
       "pack_size": 0.1,
       "pricing_mode": "by_weight",
       "price": 49.96,
-      "price_as_of": "2026-10-20",
+      "price_as_of": "2026-10-21",
       "price_source": "manual_club_snapshot",
       "availability": "unknown",
       "availability_checked_at": null,
@@ -283,7 +283,7 @@
       "identity_key": "УТ-00003202|3202",
       "identity_source": "paired_UT_stock_and_minmax_audit_2026-10-13",
       "price_source_system": "1C_UT_11_minmax_email_verified",
-      "price_snapshot_time": "2026-10-20T19:06:43+03:00",
+      "price_snapshot_time": "2026-10-21T19:06:56+03:00",
       "sold_in_palleta": true
     },
     {
@@ -881,7 +881,7 @@
   },
   "last_reference_import": {
     "source": "minmax_verified_email",
-    "as_of": "2026-10-20T19:06:43+03:00",
+    "as_of": "2026-10-21T19:06:56+03:00",
     "mode": "dated_club_price_only",
     "updated_prices": 1,
     "online_stock_confirmed": false

@@ -644,9 +644,7 @@
       "name": "Куриное филе",
       "unit": "кг",
       "product_ids": [
-        "chicken_fillet",
-        "palleta_chicken_fillet",
-        "chicken_breast"
+        "chicken_fillet"
       ],
       "substitution_hint": "Куриная грудка без кости подходит для большинства блюд с филе. Потроха лучше выбрать как отдельное блюдо: способы приготовления отличаются.",
       "sold_in_palleta": false,
@@ -670,7 +668,6 @@
       "name": "Белая рыба",
       "unit": "кг",
       "product_ids": [
-        "pollock",
         "hake_fish"
       ],
       "substitution_hint": "Хек — альтернативная белая рыба. Замена возможна после проверки костей, вида разделки и фактической массы.",
@@ -682,8 +679,7 @@
       "name": "Рис",
       "unit": "кг",
       "product_ids": [
-        "mistral_rice_900",
-        "shams_rice_900"
+        "mistral_rice_900"
       ],
       "substitution_hint": "Шамс Янтарь 900 г — аналог по категории, упаковку и сорт проверить.",
       "sold_in_palleta": true,
@@ -694,8 +690,7 @@
       "name": "Мука",
       "unit": "кг",
       "product_ids": [
-        "makfa_flour_2000",
-        "snezhana_flour_2000"
+        "makfa_flour_2000"
       ],
       "substitution_hint": "Снежана 2 кг — аналог, проверить сорт муки.",
       "sold_in_palleta": true,
@@ -728,7 +723,6 @@
       "name": "Яйца",
       "unit": "шт",
       "product_ids": [
-        "eggs_s1_30",
         "eggs_co_10"
       ],
       "substitution_hint": "С1 30 шт. — предпочтительно; СО 10 шт. — другой класс, ручная замена.",
@@ -740,8 +734,7 @@
       "name": "Молоко",
       "unit": "л",
       "product_ids": [
-        "darman_milk_1l",
-        "vkus_milk_950"
+        "darman_milk_1l"
       ],
       "substitution_hint": "Вкуснотеево 950 г: формат подтверждён, но пересчёт граммов в литры для рецепта требует проверки",
       "sold_in_palleta": true,
@@ -763,8 +756,7 @@
       "name": "Подсолнечное масло",
       "unit": "л",
       "product_ids": [
-        "zlato_oil_1l",
-        "tsar_oil_1l"
+        "zlato_oil_1l"
       ],
       "substitution_hint": "Другие марки подсолнечного масла 1 л после сверки цены",
       "sold_in_palleta": true,
@@ -852,9 +844,7 @@
       "name": "Зелень",
       "unit": "пучок",
       "product_ids": [
-        "dill",
-        "parsley",
-        "cilantro"
+        "dill"
       ],
       "substitution_hint": "Укроп, петрушка и кинза представлены в группе «Рынок 2» УТ 11. Проверить фасовку и фактическое наличие при сборке.",
       "assortment_confirmed_by_owner": true,

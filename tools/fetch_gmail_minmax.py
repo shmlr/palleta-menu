@@ -15,6 +15,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import urllib.error
 import urllib.parse
 import urllib.request
 
@@ -30,22 +31,39 @@ def stop(reason):
     raise RuntimeError("STOP: " + reason)
 
 
-def request_json(url, *, token=None, post=None):
+def request_json(url, *, token=None, post=None, context="Google API"):
     headers = {"Accept": "application/json"}
     if token:
         headers["Authorization"] = "Bearer " + token
     if post is not None:
         headers["Content-Type"] = "application/x-www-form-urlencoded"
     req = urllib.request.Request(url, headers=headers, data=urllib.parse.urlencode(post).encode() if post else None)
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        return json.load(resp)
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            return json.load(resp)
+    except urllib.error.HTTPError as exc:
+        # Never print response bodies, URLs, tokens or credentials. Google OAuth
+        # exposes a short machine-readable error code such as "invalid_grant";
+        # whitelisting that code is enough to diagnose expired/revoked tokens.
+        safe_error = None
+        try:
+            payload = json.loads(exc.read().decode("utf-8", errors="replace"))
+            raw = payload.get("error")
+            if isinstance(raw, dict):
+                raw = raw.get("status")
+            if isinstance(raw, str) and re.fullmatch(r"[A-Za-z0-9_.-]{1,64}", raw):
+                safe_error = raw
+        except Exception:
+            pass
+        suffix = (" (" + safe_error + ")") if safe_error else ""
+        stop(f"{context} failed: HTTP {exc.code}{suffix}")
 
 
 def gmail_token():
     keys = ("GMAIL_OAUTH_CLIENT_ID", "GMAIL_OAUTH_CLIENT_SECRET", "GMAIL_OAUTH_REFRESH_TOKEN")
     if any(not os.environ.get(k) for k in keys):
         stop("required Gmail OAuth secrets missing")
-    data = request_json("https://oauth2.googleapis.com/token", post={
+    data = request_json("https://oauth2.googleapis.com/token", context="OAuth token refresh", post={
         "client_id": os.environ[keys[0]], "client_secret": os.environ[keys[1]],
         "refresh_token": os.environ[keys[2]], "grant_type": "refresh_token"
     })
@@ -58,7 +76,7 @@ def gmail(token, path, params=None):
     url = "https://gmail.googleapis.com/gmail/v1/users/me/" + path
     if params:
         url += "?" + urllib.parse.urlencode(params)
-    return request_json(url, token=token)
+    return request_json(url, token=token, context="Gmail API")
 
 
 def headers(part):

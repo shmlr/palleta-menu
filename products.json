@@ -723,7 +723,7 @@
       "name": "Яйца",
       "unit": "шт",
       "product_ids": [
-        "eggs_co_10"
+        "eggs_s1_30"
       ],
       "substitution_hint": "С1 30 шт. — предпочтительно; СО 10 шт. — другой класс, ручная замена.",
       "sold_in_palleta": true,

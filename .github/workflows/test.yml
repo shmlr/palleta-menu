@@ -20,6 +20,8 @@ jobs:
         run: python3 -m unittest -v test_minmax_email_import.py
       - name: Validate basket and club pricing
         run: node test_core.cjs
+      - name: Validate nine soup recipe cards and image files
+        run: node test_soups.cjs
       - name: Validate mobile UI flow
         run: node test_ui.cjs
       - name: Install Chromium driver

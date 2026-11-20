@@ -11,9 +11,9 @@ function check(c){const cc=C.normalize(c);C.checkRecipes(rs,cc);return cc}
 let c=check(clone());let r=C.plan(c,rs,prefs,{now});
 assert.strictEqual(r.totalSlots,21);assert.strictEqual(r.filled,21);assert(!r.basket.allStock);assert.strictEqual(r.basket.confirmedTotal,null);
 assert.strictEqual(rs.filter(x=>x.meal==='breakfast').length,12);
-assert.strictEqual(rs.filter(x=>x.meal==='lunch').length,15);
+assert.strictEqual(rs.filter(x=>x.meal==='lunch').length,24);
 assert.strictEqual(rs.filter(x=>x.meal==='dinner').length,17);
-console.log('PASS: 44 recipes, three meals, 21 tentative slots, unknown stock never verified');
+console.log('PASS: 53 recipes, three meals, 21 tentative slots, unknown stock never verified');
 let all=clone();all.products.forEach(p=>{p.availability='in_stock';p.availability_checked_at=stamp;p.stock_quantity=1000;p.price=100;p.price_source='current_club';p.price_type='Оптовая, RUB';p.price_as_of=stamp});
 c=check(all);r=C.plan(c,rs,prefs,{now});assert.strictEqual(r.filled,21);assert.strictEqual(r.basket.allStock,true);assert.strictEqual(r.basket.allCurrent,true);assert(Number.isFinite(r.basket.confirmedTotal));
 console.log('PASS: fresh stock + club prices allow cardholder basket amount');
@@ -24,8 +24,8 @@ let absent=clone();absent.products.forEach(p=>{p.availability='out_of_stock';p.a
 c=check(absent);r=C.plan(c,rs,prefs,{now});assert.strictEqual(r.filled,0);assert.strictEqual(r.basket.items.length,0);
 console.log('PASS: all unavailable -> empty slots, not imaginary order');
 let noFish=clone();for(const p of noFish.products){p.availability='in_stock';p.availability_checked_at=stamp;p.stock_quantity=1000;if(p.ingredient==='fish'){p.availability='out_of_stock';p.stock_quantity=0}}
-c=check(noFish);r=C.plan(c,rs,prefs,{now});assert.strictEqual(r.filled,21);assert(r.slots.every(s=>!s.recipe||!s.recipe.tags.includes('fish')));
-console.log('PASS: recipe replacement when white fish completely out of stock');
+c=check(noFish);r=C.plan(c,rs,prefs,{now});assert.strictEqual(r.filled,21);assert(r.slots.every(s=>!s.recipe||!('fish' in s.recipe.ingredients_per_person)),'unavailable white-fish SKU cannot enter menu; separately sourced red fish remains possible');
+console.log('PASS: no selected recipe uses unavailable store white fish; external red fish is separate');
 let restricted=clone();restricted.products.forEach(p=>{p.availability='in_stock';p.availability_checked_at=stamp;p.stock_quantity=1000});
 c=check(restricted);r=C.plan(c,rs,{...prefs,excl:['fish','gluten','dairy','eggs']},{now});assert(r.filled<21);assert(r.slots.every(s=>!s.recipe||s.recipe.tags.every(t=>!['fish','gluten','dairy','eggs'].includes(t))));
 console.log('PASS: exclusions strictly obeyed');

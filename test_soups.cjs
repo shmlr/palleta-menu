@@ -1,5 +1,6 @@
 // Smoke checks for the independent editorial soup collection.
-// This page is intentionally separate from the 1C SKU/club-price basket.
+// The editorial page remains distinct, while nine soups are now also in the planner.
+// Unverified ingredients must stay out of the 1C SKU/club-price basket.
 'use strict';
 const fs = require('fs');
 const assert = require('node:assert/strict');
@@ -29,5 +30,7 @@ for (const entry of ['index.html','start.html']) {
   assert.ok(fs.readFileSync(entry,'utf8').includes('href="./soups.html"'));
 }
 const recipes = JSON.parse(fs.readFileSync('recipes.json','utf8'));
-assert.equal(recipes.recipes.length,44,'Existing menu planner recipes must stay unchanged');
-console.log('PASS: 9 recipes, 18 branded images, links, original logo, 44 menu dishes untouched');
+assert.equal(recipes.recipes.length,53,'Planner contains original 44 plus nine soups');
+assert.equal(recipes.recipes.filter(r=>!r.id.startsWith('soup_')).length,44,'All 44 existing recipes preserved');
+for(const id of ids) assert(recipes.recipes.some(r=>r.id==='soup_'+id&&r.meal==='lunch'),'Soup not selectable: '+id);
+console.log('PASS: 9 soup pages, 18 branded images, original logo, 44 original + 9 new selectable menu recipes');

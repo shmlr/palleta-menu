@@ -156,8 +156,8 @@ function basketText(result){
  if(result.basket.externalItems.length){
   t+='\nДома / купить отдельно (не для заказа в Паллете):\n';
   for(const it of result.basket.externalItems){
-   const qty=it.p.pricing_mode==='by_weight'?qfmt(it.quantity)+' '+it.p.unit:it.packs+' уп. по '+qfmt(it.p.pack_size)+' '+it.p.unit;
-   t+='• '+it.p.name+' — '+qty+'\n';
+   const qty=!it.p?qfmt(it.quantity)+' '+it.ing.unit:it.p.pricing_mode==='by_weight'?qfmt(it.quantity)+' '+it.p.unit:it.packs+' уп. по '+qfmt(it.p.pack_size)+' '+it.p.unit;
+   t+='• '+(it.p?it.p.name:it.ing.name)+(it.unmapped?' (ассортимент не подтверждён)':'')+' — '+qty+'\n';
   }
  }
  if(result.basket.shortages.length)t+='\nНЕ ХВАТАЕТ: '+result.basket.shortages.map(x=>x.name||x.id).join(', ')+'\n';
@@ -254,10 +254,10 @@ function renderResult(message=''){
   h+='</div>';
  }
  if(b.externalItems.length){
-  h+='<div class="panel" id="outside-store"><h2>Дома или купить отдельно</h2><p class="muted">Мясо пока не продаётся в Паллете. Эти продукты нужны для приготовления, но не входят в клубную стоимость и WhatsApp-заявку магазину.</p>';
+  h+='<div class="panel" id="outside-store"><h2>Дома или купить отдельно</h2><p class="muted">Здесь мясо, которое не продаётся в Паллете, и продукты без подтверждённого соответствия 1С. Их нужно купить отдельно или уточнить ассортимент в магазине. В клубную стоимость и WhatsApp-заявку они не включены.</p>';
   for(const it of b.externalItems){
-   const qty=it.p.pricing_mode==='by_weight'?qfmt(it.quantity)+' '+esc(it.p.unit):it.packs+' уп. по '+qfmt(it.p.pack_size)+' '+esc(it.p.unit);
-   h+='<div class="product"><b>'+esc(it.ing.name)+'</b><p class="small">'+esc(it.p.name)+' · '+qty+'</p>';
+   const qty=!it.p?qfmt(it.quantity)+' '+esc(it.ing.unit):it.p.pricing_mode==='by_weight'?qfmt(it.quantity)+' '+esc(it.p.unit):it.packs+' уп. по '+qfmt(it.p.pack_size)+' '+esc(it.p.unit);
+   h+='<div class="product"><b>'+esc(it.ing.name)+'</b><p class="small">'+(it.p?esc(it.p.name):'Ассортимент не подтверждён')+' · '+qty+'</p>';
    const options=(it.ing.product_ids||[]).map(id=>catalog.byProduct[id]).filter(x=>C.validProduct(x,it.ing));
    if(options.length>1){
     h+='<label class="small" for="outside-'+esc(it.ing.id)+'">Что будете использовать</label><select id="outside-'+esc(it.ing.id)+'" data-ingredient="'+esc(it.ing.id)+'">';

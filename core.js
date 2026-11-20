@@ -61,6 +61,12 @@ function basket(needs,c,selected={},now=Date.now(),homeIngredients=[]){
    homeItems.push({ingredient:id,ing,p:product,quantity:Number(qty.toFixed(5))});
    continue;
   }
+  // Unmapped editorial requirements are outside-store needs, never invented SKUs.
+  if(ing.sold_in_palleta===false && (!ing.product_ids||ing.product_ids.length===0)){
+   externalItems.push({ingredient:id,ing,p:null,quantity:Number(qty.toFixed(5)),
+    unmapped:true,stock:'unknown',priceKnown:false,priceCurrent:false,cost:null});
+   continue;
+  }
   const a=allocateIngredient(ing,qty,c,selected,now);
   for(const part of a.alloc){
    const data={...part,ing};
@@ -72,7 +78,7 @@ function basket(needs,c,selected={},now=Date.now(),homeIngredients=[]){
   if(a.unknown&&ing.sold_in_palleta!==false)unknownIngredients.push(id);
  }
  items.sort((a,b)=>a.ing.name.localeCompare(b.ing.name,'ru')||a.p.name.localeCompare(b.p.name,'ru'));
- externalItems.sort((a,b)=>a.ing.name.localeCompare(b.ing.name,'ru')||a.p.name.localeCompare(b.p.name,'ru'));
+ externalItems.sort((a,b)=>a.ing.name.localeCompare(b.ing.name,'ru')||(a.p?.name||'').localeCompare(b.p?.name||'','ru'));
  homeItems.sort((a,b)=>a.ing.name.localeCompare(b.ing.name,'ru'));
  const allCurrent=items.length>0&&items.every(x=>x.priceCurrent);
  const allStock=items.length>0&&items.every(x=>x.stock==='in_stock')&&shortages.length===0;

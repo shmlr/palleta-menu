@@ -1,0 +1,36 @@
+name: Validate 53 recipe catalog and safe soup shopping lists
+on:
+  pull_request:
+    paths:
+      - 'recipes.json'
+      - 'products.json'
+      - 'core.js'
+      - 'app.js'
+      - 'tools/test_soup_catalog.cjs'
+      - '.github/workflows/test-soup-catalog.yml'
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'recipes.json'
+      - 'products.json'
+      - 'core.js'
+      - 'app.js'
+      - 'tools/test_soup_catalog.cjs'
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check JS syntax
+        run: |
+          node --check core.js
+          node --check app.js
+          node --check tools/test_soup_catalog.cjs
+      - name: Verify catalog and outside-store rules
+        run: node tools/test_soup_catalog.cjs
